@@ -1,67 +1,85 @@
-import os
-import requests
-from censys.search import CensysHosts
+const { Telegraf } = require('telegraf');
+const axios = require('axios');
+const net = require('net');
 
-# --- VARIÁVEIS COM NOMES PADRONIZADOS ---
-# Certifique-se que no GitHub os nomes estão EXATAMENTE assim:
-TOKEN_BOT = os.getenv("TELEGRAM_TOKEN")
-MEU_ID = os.getenv("TELEGRAM_CHAT_ID")
-CENSYS_CHAVE = os.getenv("CENSYS_TOKEN")
+// --- CONFIGURAÇÕES (Pegas do GitHub Secrets) ---
+const BOT_TOKEN = process.env.TELEGRAM_TOKEN;
+const [,, C_ID, C_SECRET] = (process.env.CENSYS_TOKEN || "").split('_');
 
-# Organiza as chaves do Censys
-try:
-    parts = CENSYS_CHAVE.split('_')
-    C_ID, C_SECRET = parts[1], parts[2]
-except:
-    C_ID = C_SECRET = None
+const PORT_RANGE_START = 14000;
+const PORT_RANGE_END   = 17000;
+const CONNECT_TIMEOUT  = 800; 
+const MAX_CONCURRENT   = 100; 
 
-def enviar_ao_telegram(mensagem, nome_arquivo=None, dados=None):
-    url_base = f"https://api.telegram.org/bot{TOKEN_BOT}"
-    
-    if nome_arquivo and dados:
-        # Envia o arquivo TXT com a lista
-        requests.post(f"{url_base}/sendDocument", 
-                      data={"chat_id": MEU_ID, "caption": mensagem}, 
-                      files={"document": (nome_arquivo, dados)})
-    else:
-        # Envia apenas o aviso de texto
-        requests.post(f"{url_base}/sendMessage", 
-                      json={"chat_id": MEU_ID, "text": mensagem, "parse_mode": "Markdown"})
+const bot = new Telegraf(BOT_TOKEN);
 
-def iniciar_extracao():
-    if not C_ID or not TOKEN_BOT:
-        print("Erro: Verifique os nomes dos Secrets no GitHub!")
-        return
+// Função de scanner de porta (Sua lógica de rede)
+function checkPort(ip, port) {
+    return new Promise(resolve => {
+        const sock = new net.Socket();
+        let done = false;
+        sock.setTimeout(CONNECT_TIMEOUT);
+        const finish = (ok) => { if (!done) { done = true; sock.destroy(); resolve(ok); } };
+        sock.on('connect', () => finish(true));
+        sock.on('error', () => finish(false));
+        sock.on('timeout', () => finish(false));
+        sock.connect(port, ip);
+    });
+}
 
-    enviar_ao_telegram("🚀 *Iniciando busca definitiva...*\nRange: 14000-17000\nFiltro: Status 200 OK")
+// Escaneia o range de um IP específico
+async function scanIP(ip) {
+    const found = [];
+    const ports = [];
+    for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) ports.push(p);
 
-    h = CensysHosts(api_id=C_ID, api_secret=C_SECRET)
-    # Query que achou os IPs na sua foto
-    query = 'services.port: [14000 TO 17000] and services.http.response.status_code: 200'
-    
-    lista_links = []
+    for (let i = 0; i < ports.length; i += MAX_CONCURRENT) {
+        const chunk = ports.slice(i, i + MAX_CONCURRENT);
+        const results = await Promise.all(chunk.map(async p => (await checkPort(ip, p)) ? p : null));
+        found.push(...results.filter(Boolean));
+    }
+    return found;
+}
 
-    try:
-        # Busca 10 páginas de resultados
-        for page in h.search(query, pages=10):
-            for host in page:
-                ip = host['ip']
-                for service in host.get('services', []):
-                    porta = service.get('port')
-                    if 14000 <= porta <= 17000:
-                        # Monta o link bruto com /live.ts
-                        lista_links.append(f"http://{ip}:{porta}/live.ts")
-    except Exception as e:
-        enviar_ao_telegram(f"❌ Erro na busca: {e}")
-        return
+// Comando principal: Quando você digitar "video/mp2t"
+bot.hears(/video\/mp2t/i, async (ctx) => {
+    await ctx.reply("🔎 Buscando alvos no Censys e iniciando scanner nas portas 14000-17000... Aguarde.");
 
-    if lista_links:
-        # Tira IPs repetidos e cria o texto
-        final = "\n".join(sorted(list(set(lista_links))))
-        enviar_ao_telegram(f"✅ *Pronto!* Encontrados `{len(lista_links)}` links.", 
-                           "lista_iptv.txt", final)
-    else:
-        enviar_ao_telegram("⚠️ Nenhum IP com porta aberta encontrado agora.")
+    const auth = Buffer.from(`${C_ID}:${C_SECRET}`).toString('base64');
+    const query = 'services.port: [14000 TO 17000] and services.http.response.status_code: 200';
 
-if __name__ == "__main__":
-    iniciar_extracao()
+    try {
+        const res = await axios.get(`https://search.censys.io/api/v2/hosts/search?q=${encodeURIComponent(query)}&per_page=15`, {
+            headers: { 'Authorization': `Basic ${auth}` }
+        });
+
+        const hosts = res.data.result.hits;
+        let links = [];
+
+        for (const host of hosts) {
+            const abertas = await scanIP(host.ip);
+            abertas.forEach(p => links.push(`http://${host.ip}:${p}/live.ts`));
+        }
+
+        if (links.length > 0) {
+            const uniqueLinks = [...new Set(links)];
+            const conteudo = uniqueLinks.join('\n');
+            
+            // Monta o M3U
+            let m3u = "#EXTM3U\n";
+            uniqueLinks.forEach((l, i) => m3u += `#EXTINF:-1, Canal ${i+1}\n${l}\n`);
+
+            // Envia os dois arquivos
+            await ctx.replyWithDocument({ source: Buffer.from(conteudo), filename: 'canais.txt' });
+            await ctx.replyWithDocument({ source: Buffer.from(m3u), filename: 'lista.m3u' });
+            await ctx.reply(`✅ Scanner finalizado! Encontrados ${uniqueLinks.length} links.`);
+        } else {
+            await ctx.reply("⚠️ Nenhum IP com porta aberta respondeu no momento.");
+        }
+    } catch (err) {
+        await ctx.reply("❌ Erro ao processar: " + err.message);
+    }
+});
+
+bot.launch();
+console.log("🤖 Bot rodando e aguardando comando 'video/mp2t'...");
