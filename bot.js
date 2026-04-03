@@ -38,7 +38,6 @@ function censysSearch(query, perPage = 50) {
     const body = JSON.stringify({
       q: query,
       per_page: perPage,
-      fields: ['ip'],
     });
 
     const options = {
@@ -48,7 +47,7 @@ function censysSearch(query, perPage = 50) {
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body),
-        'Authorization': `Bearer ${CENSYS_TOKEN}`,
+        'Censys-Api-Token': CENSYS_TOKEN,
         'User-Agent': 'iptv-scanner-bot/1.0',
       },
     };
@@ -59,12 +58,17 @@ function censysSearch(query, perPage = 50) {
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          if (json.code && json.code !== 200) {
-            return reject(new Error(json.message || 'Erro na API Censys'));
+          console.log('Censys HTTP status:', res.statusCode);
+          console.log('Censys response:', JSON.stringify(json).slice(0, 300));
+
+          if (res.statusCode !== 200) {
+            const msg = json.message || json.error || json.detail || `HTTP ${res.statusCode}`;
+            return reject(new Error(`Censys: ${msg}`));
           }
           const ips = (json.result?.hits || []).map(h => h.ip).filter(Boolean);
           resolve({ ips, total: json.result?.total || ips.length });
         } catch (e) {
+          console.log('Censys raw:', data.slice(0, 300));
           reject(new Error('Erro ao parsear resposta do Censys'));
         }
       });
