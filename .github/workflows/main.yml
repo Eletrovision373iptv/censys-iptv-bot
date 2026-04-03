@@ -1,24 +1,26 @@
 name: Busca Diaria IPTV Censys
+
 on:
-  schedule:
-    - cron: '0 0 * * *' # Roda todo dia à meia-noite (UTC)
-  workflow_dispatch: # Permite você rodar manualmente clicando num botão
+  workflow_dispatch: # Permite rodar manualmente no botão "Run workflow"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Configurar Python
-        uses: actions/setup-python@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Atualizado para v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4 # Atualizado para v4
         with:
-          python-version: '3.9'
-      - name: Instalar Dependencias
-        run: pip install -r requirements.txt
-      - name: Executar Busca e Enviar para Telegram
+          node-version: '24' # Versão recomendada pelo GitHub agora
+
+      - name: Install dependencies
+        run: npm install axios telegraf
+
+      - name: Rodar Script Node
         env:
-          CENSYS_ID: ${{ secrets.CENSYS_ID }}
-          CENSYS_SECRET: ${{ secrets.CENSYS_SECRET }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python buscador.py
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID  }}
+          CENSYS_TOKEN: ${{ secrets.CENSYS_TOKEN }}
+        run: node index.js
