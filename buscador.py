@@ -2,67 +2,66 @@ import os
 import requests
 from censys.search import CensysHosts
 
-# --- CONFIGURAÇÕES DE AMBIENTE ---
-CENSYS_TOKEN = os.getenv("CENSYS_TOKEN")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+# --- VARIÁVEIS COM NOMES PADRONIZADOS ---
+# Certifique-se que no GitHub os nomes estão EXATAMENTE assim:
+TOKEN_BOT = os.getenv("TELEGRAM_TOKEN")
+MEU_ID = os.getenv("TELEGRAM_CHAT_ID")
+CENSYS_CHAVE = os.getenv("CENSYS_TOKEN")
 
+# Organiza as chaves do Censys
 try:
-    parts = CENSYS_TOKEN.split('_')
-    CENSYS_ID, CENSYS_SECRET = parts[1], parts[2]
+    parts = CENSYS_CHAVE.split('_')
+    C_ID, C_SECRET = parts[1], parts[2]
 except:
-    CENSYS_ID = CENSYS_SECRET = None
+    C_ID = C_SECRET = None
 
-def enviar_telegram(msg, arquivo_nome=None, conteudo=None):
-    base_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-    if arquivo_nome and conteudo:
-        requests.post(f"{base_url}/sendDocument", 
-                      data={"chat_id": TELEGRAM_CHAT_ID, "caption": msg}, 
-                      files={"document": (arquivo_nome, conteudo)})
+def enviar_ao_telegram(mensagem, nome_arquivo=None, dados=None):
+    url_base = f"https://api.telegram.org/bot{TOKEN_BOT}"
+    
+    if nome_arquivo and dados:
+        # Envia o arquivo TXT com a lista
+        requests.post(f"{url_base}/sendDocument", 
+                      data={"chat_id": MEU_ID, "caption": mensagem}, 
+                      files={"document": (nome_arquivo, dados)})
     else:
-        requests.post(f"{base_url}/sendMessage", 
-                      json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"})
+        # Envia apenas o aviso de texto
+        requests.post(f"{url_base}/sendMessage", 
+                      json={"chat_id": MEU_ID, "text": mensagem, "parse_mode": "Markdown"})
 
-def teste_extracao_bruta():
-    if not CENSYS_ID:
-        print("Erro: Verifique seus Secrets no GitHub.")
+def iniciar_extracao():
+    if not C_ID or not TOKEN_BOT:
+        print("Erro: Verifique os nomes dos Secrets no GitHub!")
         return
-    
-    enviar_telegram("🧪 *Iniciando Teste de Extração...*\nBuscando exatamente como na foto (Status 200)")
-    
-    h = CensysHosts(api_id=CENSYS_ID, api_secret=CENSYS_SECRET)
-    
-    # Query baseada na sua imagem: Porta no range e resposta 200 OK
+
+    enviar_ao_telegram("🚀 *Iniciando busca definitiva...*\nRange: 14000-17000\nFiltro: Status 200 OK")
+
+    h = CensysHosts(api_id=C_ID, api_secret=C_SECRET)
+    # Query que achou os IPs na sua foto
     query = 'services.port: [14000 TO 17000] and services.http.response.status_code: 200'
     
-    links = []
-    
+    lista_links = []
+
     try:
-        # Puxa 5 páginas para o teste ser rápido (250 resultados)
-        for page in h.search(query, pages=5):
+        # Busca 10 páginas de resultados
+        for page in h.search(query, pages=10):
             for host in page:
                 ip = host['ip']
                 for service in host.get('services', []):
                     porta = service.get('port')
-                    
-                    # Filtro de segurança para manter no seu range
                     if 14000 <= porta <= 17000:
-                        link = f"http://{ip}:{porta}/live.ts"
-                        links.append(link)
-                        print(f"📍 Extraído: {link}")
+                        # Monta o link bruto com /live.ts
+                        lista_links.append(f"http://{ip}:{porta}/live.ts")
     except Exception as e:
-        enviar_telegram(f"❌ Erro na API: {e}")
+        enviar_ao_telegram(f"❌ Erro na busca: {e}")
         return
 
-    if links:
-        # Remove duplicados e gera o TXT
-        lista_final = sorted(list(set(links)))
-        txt_data = "\n".join(lista_final)
-        
-        enviar_telegram(f"✅ *Teste Concluído!*\nEncontrados: `{len(lista_final)}` links.", 
-                        "teste_lista.txt", txt_data)
+    if lista_links:
+        # Tira IPs repetidos e cria o texto
+        final = "\n".join(sorted(list(set(lista_links))))
+        enviar_ao_telegram(f"✅ *Pronto!* Encontrados `{len(lista_links)}` links.", 
+                           "lista_iptv.txt", final)
     else:
-        enviar_telegram("⚠️ O Censys não retornou nada com 'status_code: 200' nesse range agora.")
+        enviar_ao_telegram("⚠️ Nenhum IP com porta aberta encontrado agora.")
 
 if __name__ == "__main__":
-    teste_extracao_bruta()
+    iniciar_extracao()
