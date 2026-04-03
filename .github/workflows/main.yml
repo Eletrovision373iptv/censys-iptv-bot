@@ -1,0 +1,24 @@
+name: Busca Diaria IPTV Censys
+on:
+  schedule:
+    - cron: '0 0 * * *' # Roda todo dia à meia-noite (UTC)
+  workflow_dispatch: # Permite você rodar manualmente clicando num botão
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Instalar Dependencias
+        run: pip install -r requirements.txt
+      - name: Executar Busca e Enviar para Telegram
+        env:
+          CENSYS_ID: ${{ secrets.CENSYS_ID }}
+          CENSYS_SECRET: ${{ secrets.CENSYS_SECRET }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python buscador.py
