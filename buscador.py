@@ -2,7 +2,7 @@ import os
 import requests
 from censys.search import CensysHosts
 
-# --- CONFIGURAÇÕES ---
+# --- CONFIGURAÇÕES DE AMBIENTE ---
 CENSYS_TOKEN = os.getenv("CENSYS_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -16,56 +16,53 @@ except:
 def enviar_telegram(msg, arquivo_nome=None, conteudo=None):
     base_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
     if arquivo_nome and conteudo:
-        # Envia o arquivo TXT
         requests.post(f"{base_url}/sendDocument", 
                       data={"chat_id": TELEGRAM_CHAT_ID, "caption": msg}, 
                       files={"document": (arquivo_nome, conteudo)})
     else:
-        # Envia apenas mensagem de texto
         requests.post(f"{base_url}/sendMessage", 
                       json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"})
 
-def rodar_extrator():
+def teste_extracao_bruta():
     if not CENSYS_ID:
-        print("Erro: CENSYS_TOKEN não configurado corretamente.")
+        print("Erro: Verifique seus Secrets no GitHub.")
         return
     
-    enviar_telegram("🔎 *Iniciando Extração Bruta...*\nRange: 14000-17000\nFormato: `http://ip:porta/live.ts`")
+    enviar_telegram("🧪 *Iniciando Teste de Extração...*\nBuscando exatamente como na foto (Status 200)")
     
     h = CensysHosts(api_id=CENSYS_ID, api_secret=CENSYS_SECRET)
-    # Query focada no seu range e em serviços de vídeo
-    query = 'services.port: [14000 TO 17000] and services.http.response.headers.content_type: "video/mp2t"'
     
-    links_gerados = []
+    # Query baseada na sua imagem: Porta no range e resposta 200 OK
+    query = 'services.port: [14000 TO 17000] and services.http.response.status_code: 200'
+    
+    links = []
     
     try:
-        # Varre 20 páginas para pegar o máximo de IPs possível (até 1000)
-        for page in h.search(query, pages=20):
+        # Puxa 5 páginas para o teste ser rápido (250 resultados)
+        for page in h.search(query, pages=5):
             for host in page:
                 ip = host['ip']
                 for service in host.get('services', []):
                     porta = service.get('port')
                     
-                    # Filtra apenas o range que você quer
+                    # Filtro de segurança para manter no seu range
                     if 14000 <= porta <= 17000:
-                        # Monta o link exatamente como você pediu
-                        link_formatado = f"http://{ip}:{porta}/live.ts"
-                        links_gerados.append(link_formatado)
-                        print(f"📍 Adicionado: {link_formatado}")
-                        
+                        link = f"http://{ip}:{porta}/live.ts"
+                        links.append(link)
+                        print(f"📍 Extraído: {link}")
     except Exception as e:
-        enviar_telegram(f"❌ Erro na API do Censys: {e}")
+        enviar_telegram(f"❌ Erro na API: {e}")
         return
 
-    if links_gerados:
-        # Remove duplicados (caso o mesmo IP apareça mais de uma vez)
-        lista_final = sorted(list(set(links_gerados)))
-        conteudo_txt = "\n".join(lista_final)
+    if links:
+        # Remove duplicados e gera o TXT
+        lista_final = sorted(list(set(links)))
+        txt_data = "\n".join(lista_final)
         
-        status_msg = f"✅ *Extração Concluída!*\nTotal de links gerados: `{len(lista_final)}`"
-        enviar_telegram(status_msg, "lista_iptv_censys.txt", conteudo_txt)
+        enviar_telegram(f"✅ *Teste Concluído!*\nEncontrados: `{len(lista_final)}` links.", 
+                        "teste_lista.txt", txt_data)
     else:
-        enviar_telegram("⚠️ O Censys não encontrou nenhum IP nesse range com filtro de vídeo agora.")
+        enviar_telegram("⚠️ O Censys não retornou nada com 'status_code: 200' nesse range agora.")
 
 if __name__ == "__main__":
-    rodar_extrator()
+    teste_extracao_bruta()
