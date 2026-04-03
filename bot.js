@@ -4,10 +4,10 @@ const http = require('http');
 const https = require('https');
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const BOT_TOKEN      = process.env.BOT_TOKEN;
-const CENSYS_TOKEN   = process.env.CENSYS_TOKEN;
-if (!BOT_TOKEN)    throw new Error('BOT_TOKEN não definido!');
-if (!CENSYS_TOKEN) throw new Error('CENSYS_TOKEN não definido!');
+const BOT_TOKEN   = process.env.BOT_TOKEN;
+const SHODAN_KEY  = process.env.SHODAN_KEY;
+if (!BOT_TOKEN)  throw new Error('BOT_TOKEN não definido!');
+if (!SHODAN_KEY) throw new Error('SHODAN_KEY não definida!');
 
 const PORT = process.env.PORT || 3000;
 
@@ -31,25 +31,20 @@ const server = http.createServer((req, res) => {
 });
 server.listen(PORT, () => console.log(`🌐 Keep-alive na porta ${PORT}`));
 
-// ── Censys API ────────────────────────────────────────────────────────────────
+// ── Shodan API ────────────────────────────────────────────────────────────────
 
-function censysSearch(query, perPage = 50) {
+function shodanSearch(query, page = 1) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
-      q: query,
-      per_page: perPage,
+    const params = new URLSearchParams({
+      key: SHODAN_KEY,
+      query: query,
+      page: page,
     });
 
     const options = {
-      hostname: 'search.censys.io',
-      path: '/api/v2/hosts/search',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-        'Censys-Api-Token': CENSYS_TOKEN,
-        'User-Agent': 'iptv-scanner-bot/1.0',
-      },
+      hostname: 'api.shodan.io',
+      path: `/shodan/host/search?${params.toString()}`,
+      method: 'GET',
     };
 
     const req = https.request(options, res => {
@@ -58,25 +53,27 @@ function censysSearch(query, perPage = 50) {
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          console.log('Censys HTTP status:', res.statusCode);
-          console.log('Censys response:', JSON.stringify(json).slice(0, 300));
+          console.log('Shodan HTTP status:', res.statusCode);
+          console.log('Shodan response:', JSON.stringify(json).slice(0, 300));
 
-          if (res.statusCode !== 200) {
-            const msg = json.message || json.error || json.detail || `HTTP ${res.statusCode}`;
-            return reject(new Error(`Censys: ${msg}`));
+          if (json.error) {
+            return reject(new Error(`Shodan: ${json.error}`));
           }
-          const ips = (json.result?.hits || []).map(h => h.ip).filter(Boolean);
-          resolve({ ips, total: json.result?.total || ips.length });
+
+          const ips = (json.matches || [])
+            .map(h => h.ip_str)
+            .filter(Boolean);
+
+          resolve({ ips, total: json.total || ips.length });
         } catch (e) {
-          console.log('Censys raw:', data.slice(0, 300));
-          reject(new Error('Erro ao parsear resposta do Censys'));
+          console.log('Shodan raw:', data.slice(0, 300));
+          reject(new Error('Erro ao parsear resposta do Shodan'));
         }
       });
     });
 
     req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout Censys')); });
-    req.write(body);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout Shodan')); });
     req.end();
   });
 }
@@ -194,9 +191,9 @@ function buildListText(channels) {
 bot.start(ctx => ctx.reply(
   '🛰 *Bot IPTV Scanner*\n\n' +
   'Comandos disponíveis:\n\n' +
-  '`/buscar` — busca IPs no Censys e varre automaticamente\n' +
+  '`/buscar` — busca IPs no Shodan e varre automaticamente\n' +
   '`/buscar video/mp2t` — busca por tipo de stream\n' +
-  '`/buscar services.port:14001` — busca por porta\n\n' +
+  '`/buscar port:14001` — busca por porta\n\n' +
   'Ou envie diretamente:\n' +
   '• IP: `89.187.190.183`\n' +
   '• Range: `89.187.190.0/24`',
@@ -205,9 +202,9 @@ bot.start(ctx => ctx.reply(
 
 bot.help(ctx => ctx.reply(
   '📖 *Comandos:*\n\n' +
-  '`/buscar <query>` — busca no Censys + varre IPs\n' +
+  '`/buscar <query>` — busca no Shodan + varre IPs\n' +
   '`/buscar video/mp2t` — streams de vídeo\n' +
-  '`/buscar services.port:16071` — porta específica\n' +
+  '`/buscar port:16071` — porta específica\n' +
   '`/buscar country:BR video/mp2t` — por país\n\n' +
   'Ou envie IP/range direto para varrer:\n' +
   '• `89.187.190.183`\n' +
@@ -220,7 +217,7 @@ bot.command('buscar', async ctx => {
   const query = ctx.message.text.replace('/buscar', '').trim() || 'video/mp2t';
 
   const statusMsg = await ctx.reply(
-    `🔍 Buscando no Censys: \`${query}\`...`,
+    `🔍 Buscando no Shodan: \`${query}\`...`,
     { parse_mode: 'Markdown' }
   );
   const chatId = ctx.chat.id;
@@ -229,11 +226,11 @@ bot.command('buscar', async ctx => {
   try {
     // Etapa 1: buscar IPs no Censys
     await bot.telegram.editMessageText(chatId, msgId, undefined,
-      `🌐 Consultando Censys para: \`${query}\`...`,
+      `🌐 Consultando Shodan para: \`${query}\`...`,
       { parse_mode: 'Markdown' }
     );
 
-    const { ips, total } = await censysSearch(query, 50);
+    const { ips, total } = await shodanSearch(query);
 
     if (ips.length === 0) {
       return bot.telegram.editMessageText(chatId, msgId, undefined,
@@ -243,7 +240,7 @@ bot.command('buscar', async ctx => {
     }
 
     await bot.telegram.editMessageText(chatId, msgId, undefined,
-      `✅ Censys retornou ${ips.length} IP(s) (total: ~${total})\n` +
+      `✅ Shodan retornou ${ips.length} IP(s) (total: ~${total})\n` +
       `🔍 Iniciando varredura de portas ${PORT_RANGE_START}–${PORT_RANGE_END}...`,
       { parse_mode: 'Markdown' }
     );
@@ -287,7 +284,7 @@ bot.command('buscar', async ctx => {
     const filename = `censys_${query.replace(/[^a-z0-9]/gi, '_')}.m3u`;
 
     const header =
-      `🛰 *Resultado Censys:* \`${query}\`\n\n` +
+      `🛰 *Resultado Shodan:* \`${query}\`\n\n` +
       `🌐 ${ips.length} IPs verificados\n` +
       `🖥 ${ipsWithStreams} IP(s) com streams\n` +
       `📺 ${allChannels.length} stream(s) encontrado(s)\n\n`;
@@ -456,6 +453,6 @@ bot.on('text', async ctx => {
 });
 
 bot.launch();
-console.log('🤖 Bot IPTV Scanner + Censys rodando...');
+console.log('🤖 Bot IPTV Scanner + Shodan rodando...');
 process.once('SIGINT',  () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
