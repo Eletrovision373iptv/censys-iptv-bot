@@ -1,0 +1,15 @@
+{
+  "name": "iptv-scanner-censys",
+  "version": "1.0.0",
+  "description": "Bot IPTV Scanner com Censys",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3"
+  }
+}
