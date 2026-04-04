@@ -4,10 +4,10 @@ const http = require('http');
 const https = require('https');
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const BOT_TOKEN   = process.env.BOT_TOKEN;
-const HUNTER_KEY  = process.env.HUNTER_KEY;
-if (!BOT_TOKEN)  throw new Error('BOT_TOKEN não definido!');
-if (!HUNTER_KEY) throw new Error('HUNTER_KEY não definida!');
+const BOT_TOKEN    = process.env.BOT_TOKEN;
+const ZOOMEYE_KEY  = process.env.ZOOMEYE_KEY;
+if (!BOT_TOKEN)   throw new Error('BOT_TOKEN não definido!');
+if (!ZOOMEYE_KEY) throw new Error('ZOOMEYE_KEY não definida!');
 
 const PORT = process.env.PORT || 3000;
 
@@ -31,30 +31,24 @@ const server = http.createServer((req, res) => {
 });
 server.listen(PORT, () => console.log(`🌐 Keep-alive na porta ${PORT}`));
 
-// ── Hunter.how API ────────────────────────────────────────────────────────────
+// ── ZoomEye API ───────────────────────────────────────────────────────────────
 
-function hunterSearch(query, page = 1, pageSize = 100) {
+function zoomeyeSearch(query, page = 1) {
   return new Promise((resolve, reject) => {
-    // Hunter.how exige datas no formato YYYY-MM-DD
-    const now = new Date();
-    const past = new Date();
-    past.setDate(past.getDate() - 30);
-    const fmt = d => d.toISOString().slice(0, 10);
-
     const params = new URLSearchParams({
-      'api-key': HUNTER_KEY,
-      query: query,
+      qbase64: Buffer.from(query).toString('base64'),
       page: page,
-      page_size: pageSize,
-      start_time: fmt(past),
-      end_time: fmt(now),
+      pagesize: 100,
     });
 
     const options = {
-      hostname: 'api.hunter.how',
-      path: `/search?${params.toString()}`,
+      hostname: 'api.zoomeye.ai',
+      path: `/host/search?${params.toString()}`,
       method: 'GET',
-      headers: { 'User-Agent': 'iptv-scanner-bot/1.0' },
+      headers: {
+        'API-KEY': ZOOMEYE_KEY,
+        'User-Agent': 'iptv-scanner-bot/1.0',
+      },
     };
 
     const req = https.request(options, res => {
@@ -63,27 +57,30 @@ function hunterSearch(query, page = 1, pageSize = 100) {
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          console.log('Hunter HTTP status:', res.statusCode);
-          console.log('Hunter response:', JSON.stringify(json).slice(0, 300));
+          console.log('ZoomEye HTTP status:', res.statusCode);
+          console.log('ZoomEye response:', JSON.stringify(json).slice(0, 300));
 
-          if (json.code !== 200) {
-            return reject(new Error(`Hunter: ${json.message || json.msg || `HTTP ${res.statusCode}`}`));
+          if (json.error) {
+            return reject(new Error(`ZoomEye: ${json.error}`));
+          }
+          if (res.statusCode !== 200) {
+            return reject(new Error(`ZoomEye: HTTP ${res.statusCode} - ${json.message || ''}`));
           }
 
-          const ips = (json.data?.list || json.list || [])
+          const ips = (json.matches || [])
             .map(h => h.ip)
             .filter(Boolean);
 
-          resolve({ ips, total: json.data?.total || json.total || ips.length });
+          resolve({ ips, total: json.total || ips.length });
         } catch (e) {
-          console.log('Hunter raw:', data.slice(0, 300));
-          reject(new Error('Erro ao parsear resposta do Hunter'));
+          console.log('ZoomEye raw:', data.slice(0, 300));
+          reject(new Error('Erro ao parsear resposta do ZoomEye'));
         }
       });
     });
 
     req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout Hunter')); });
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout ZoomEye')); });
     req.end();
   });
 }
@@ -201,9 +198,9 @@ function buildListText(channels) {
 bot.start(ctx => ctx.reply(
   '🛰 *Bot IPTV Scanner*\n\n' +
   'Comandos disponíveis:\n\n' +
-  '`/buscar` — busca IPs no Hunter.how e varre automaticamente\n' +
+  '`/buscar` — busca IPs no ZoomEye e varre automaticamente\n' +
   '`/buscar video/mp2t` — busca por tipo de stream\n' +
-  '`/buscar port="14001"` — busca por porta\n\n' +
+  '`/buscar port:14001` — busca por porta\n\n' +
   'Ou envie diretamente:\n' +
   '• IP: `89.187.190.183`\n' +
   '• Range: `89.187.190.0/24`',
@@ -212,10 +209,10 @@ bot.start(ctx => ctx.reply(
 
 bot.help(ctx => ctx.reply(
   '📖 *Comandos:*\n\n' +
-  '`/buscar <query>` — busca no Hunter.how + varre IPs\n' +
+  '`/buscar <query>` — busca no ZoomEye + varre IPs\n' +
   '`/buscar video/mp2t` — streams de vídeo\n' +
-  '`/buscar port="16071"` — porta específica\n' +
-  '`/buscar country="BR" && video/mp2t` — por país\n\n' +
+  '`/buscar port:16071` — porta específica\n' +
+  '`/buscar country:BR port:14001` — por país\n\n' +
   'Ou envie IP/range direto:\n' +
   '• `89.187.190.183`\n' +
   '• `89.187.190.0/24`',
@@ -227,7 +224,7 @@ bot.command('buscar', async ctx => {
   const query = ctx.message.text.replace('/buscar', '').trim() || 'video/mp2t';
 
   const statusMsg = await ctx.reply(
-    `🔍 Buscando no Hunter.how: \`${query}\`...`,
+    `🔍 Buscando no ZoomEye: \`${query}\`...`,
     { parse_mode: 'Markdown' }
   );
   const chatId = ctx.chat.id;
@@ -236,11 +233,11 @@ bot.command('buscar', async ctx => {
   try {
     // Etapa 1: buscar IPs no Censys
     await bot.telegram.editMessageText(chatId, msgId, undefined,
-      `🌐 Consultando Hunter.how para: \`${query}\`...`,
+      `🌐 Consultando ZoomEye para: \`${query}\`...`,
       { parse_mode: 'Markdown' }
     );
 
-    const { ips, total } = await hunterSearch(query);
+    const { ips, total } = await zoomeyeSearch(query);
 
     if (ips.length === 0) {
       return bot.telegram.editMessageText(chatId, msgId, undefined,
@@ -250,7 +247,7 @@ bot.command('buscar', async ctx => {
     }
 
     await bot.telegram.editMessageText(chatId, msgId, undefined,
-      `✅ Hunter retornou ${ips.length} IP(s) (total: ~${total})\n` +
+      `✅ ZoomEye retornou ${ips.length} IP(s) (total: ~${total})\n` +
       `🔍 Iniciando varredura de portas ${PORT_RANGE_START}–${PORT_RANGE_END}...`,
       { parse_mode: 'Markdown' }
     );
@@ -294,7 +291,7 @@ bot.command('buscar', async ctx => {
     const filename = `censys_${query.replace(/[^a-z0-9]/gi, '_')}.m3u`;
 
     const header =
-      `🛰 *Resultado Hunter.how:* \`${query}\`\n\n` +
+      `🛰 *Resultado ZoomEye:* \`${query}\`\n\n` +
       `🌐 ${ips.length} IPs verificados\n` +
       `🖥 ${ipsWithStreams} IP(s) com streams\n` +
       `📺 ${allChannels.length} stream(s) encontrado(s)\n\n`;
@@ -463,6 +460,6 @@ bot.on('text', async ctx => {
 });
 
 bot.launch();
-console.log('🤖 Bot IPTV Scanner + Hunter.how rodando...');
+console.log('🤖 Bot IPTV Scanner + ZoomEye rodando...');
 process.once('SIGINT',  () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
