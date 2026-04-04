@@ -316,141 +316,121 @@ bot.command('buscar', async ctx => {
   }
 });
 
-// IP único ou CIDR direto
+// IP único, múltiplos IPs ou CIDR direto
 bot.on('text', async ctx => {
   const input = ctx.message.text.trim();
-  const isCIDR = isValidCIDR(input);
-  const isIP   = isValidIP(input);
 
-  if (!isIP && !isCIDR) {
+  // Extrai todas as linhas válidas (IPs ou CIDRs)
+  const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
+  const validEntries = lines.filter(l => isValidIP(l) || isValidCIDR(l));
+
+  if (validEntries.length === 0) {
     return ctx.reply(
       '❌ Entrada inválida.\n\n' +
-      'Use `/buscar video/mp2t` para buscar no Censys\n' +
-      'Ou envie um IP: `200.100.50.10`\n' +
-      'Ou um range: `200.100.50.0/24`',
+      'Use `/buscar video/mp2t` para buscar no ZoomEye\n' +
+      'Ou envie um ou mais IPs (um por linha):\n' +
+      '`89.187.190.183`\n' +
+      '`107.150.59.42`\n' +
+      '`200.100.50.0/24`',
       { parse_mode: 'Markdown' }
     );
   }
 
-  const statusMsg = await ctx.reply(`🔍 Iniciando varredura em \`${input}\`...`, { parse_mode: 'Markdown' });
+  const statusMsg = await ctx.reply(
+    `🔍 Iniciando varredura de ${validEntries.length} entr${validEntries.length > 1 ? 'adas' : 'ada'}...`,
+    { parse_mode: 'Markdown' }
+  );
   const chatId = ctx.chat.id;
   const msgId  = statusMsg.message_id;
 
   try {
-    const ips = isCIDR ? expandCIDR(input) : [input];
-    const allPorts = [];
-    for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) allPorts.push(p);
+    const allChannels = [];
+    let totalScanned = 0;
+    let totalWithStreams = 0;
 
-    if (isIP) {
-      await bot.telegram.editMessageText(chatId, msgId, undefined,
-        `🔍 Varrendo \`${input}\`...\n📡 ${allPorts.length} portas`,
-        { parse_mode: 'Markdown' }
-      );
+    for (const entry of validEntries) {
+      const isCIDR = isValidCIDR(entry);
+      const isIP   = isValidIP(entry);
+      const ips    = isCIDR ? expandCIDR(entry) : [entry];
 
-      const openPorts = await scanPorts(input, allPorts, async (done, total) => {
-        try {
-          await bot.telegram.editMessageText(chatId, msgId, undefined,
-            `🔍 Varrendo \`${input}\`...\n⏳ ${done}/${total} portas verificadas`,
-            { parse_mode: 'Markdown' }
-          );
-        } catch (_) {}
-      });
-
-      if (openPorts.length === 0) {
-        return bot.telegram.editMessageText(chatId, msgId, undefined,
-          `✅ Concluído em \`${input}\`\n\n❌ Nenhuma porta aberta.`,
-          { parse_mode: 'Markdown' }
-        );
-      }
-
-      await bot.telegram.editMessageText(chatId, msgId, undefined,
-        `✅ ${openPorts.length} porta(s) abertas\n🎯 Testando streams em paralelo...`,
-        { parse_mode: 'Markdown' }
-      );
-
-      const streamResults = await Promise.all(openPorts.map(async port => {
-        const endpoint = await checkStream(input, port);
-        if (!endpoint) return null;
-        return { name: 'Canal', url: `http://${input}:${port}${endpoint}` };
-      }));
-
-      const channels = streamResults.filter(Boolean);
-
-      if (channels.length === 0) {
-        return bot.telegram.editMessageText(chatId, msgId, undefined,
-          `✅ Concluído\n\n🔓 ${openPorts.length} porta(s) abertas\n❌ Nenhum stream válido.`,
-          { parse_mode: 'Markdown' }
-        );
-      }
-
-      const m3u      = buildM3U(channels);
-      const listText = buildListText(channels);
-      const filename = `iptv_${input.replace(/\./g, '_')}.m3u`;
-      const header   =
-        `🛰 *Resultado da varredura no IP* \`${input}\`:\n\n` +
-        `🔓 ${openPorts.length} porta(s) TCP abertas\n` +
-        `📺 ${channels.length} stream(s) encontrado(s)\n\n`;
-
-      const fullMsg = header + '```\n#EXTM3U\n\n' + listText + '```';
-      if (fullMsg.length <= 4000) {
-        await bot.telegram.editMessageText(chatId, msgId, undefined, fullMsg, { parse_mode: 'Markdown' });
-      } else {
+      try {
         await bot.telegram.editMessageText(chatId, msgId, undefined,
-          header + '📎 Lista completa no arquivo abaixo:', { parse_mode: 'Markdown' }
+          `🔍 Varrendo \`${entry}\`...\n⏳ ${totalScanned}/${validEntries.length} entradas | 📺 ${allChannels.length} streams`,
+          { parse_mode: 'Markdown' }
         );
-      }
-      await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename });
+      } catch (_) {}
 
-    } else {
-      // CIDR
-      await bot.telegram.editMessageText(chatId, msgId, undefined,
-        `🌐 Varrendo range \`${input}\`...\n📡 ${ips.length} IPs`,
-        { parse_mode: 'Markdown' }
-      );
+      if (isIP) {
+        // IP único — varredura completa com progresso
+        const allPorts = [];
+        for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) allPorts.push(p);
 
-      const allChannels = [];
-      let ipsScanned = 0, ipsWithStreams = 0;
-
-      for (const ip of ips) {
-        const channels = await scanIPFull(ip);
-        ipsScanned++;
-        if (channels.length > 0) { ipsWithStreams++; allChannels.push(...channels); }
-        if (ipsScanned % 10 === 0) {
+        const openPorts = await scanPorts(entry, allPorts, async (done, total) => {
           try {
             await bot.telegram.editMessageText(chatId, msgId, undefined,
-              `🌐 Varrendo \`${input}\`...\n⏳ ${ipsScanned}/${ips.length} IPs | 📺 ${allChannels.length} streams`,
+              `🔍 Varrendo \`${entry}\`...\n⏳ ${done}/${total} portas | 📺 ${allChannels.length} streams`,
               { parse_mode: 'Markdown' }
             );
           } catch (_) {}
+        });
+
+        if (openPorts.length > 0) {
+          const streamResults = await Promise.all(openPorts.map(async port => {
+            const endpoint = await checkStream(entry, port);
+            if (!endpoint) return null;
+            return { name: 'Canal', url: `http://${entry}:${port}${endpoint}` };
+          }));
+          const channels = streamResults.filter(Boolean);
+          if (channels.length > 0) {
+            totalWithStreams++;
+            allChannels.push(...channels);
+          }
+        }
+
+      } else {
+        // CIDR — varre cada IP do range
+        for (const ip of ips) {
+          const channels = await scanIPFull(ip);
+          if (channels.length > 0) {
+            totalWithStreams++;
+            allChannels.push(...channels);
+          }
         }
       }
 
-      if (allChannels.length === 0) {
-        return bot.telegram.editMessageText(chatId, msgId, undefined,
-          `✅ Concluído\n\n🔍 ${ips.length} IPs verificados\n❌ Nenhum stream encontrado`,
-          { parse_mode: 'Markdown' }
-        );
-      }
-
-      const m3u      = buildM3U(allChannels);
-      const listText = buildListText(allChannels);
-      const filename = `iptv_range_${input.split('/')[1]}.m3u`;
-      const header   =
-        `🛰 *Resultado do range* \`${input}\`:\n\n` +
-        `🔍 ${ips.length} IPs verificados\n` +
-        `🖥 ${ipsWithStreams} IP(s) com streams\n` +
-        `📺 ${allChannels.length} stream(s) total\n\n`;
-
-      const fullMsg = header + '```\n#EXTM3U\n\n' + listText + '```';
-      if (fullMsg.length <= 4000) {
-        await bot.telegram.editMessageText(chatId, msgId, undefined, fullMsg, { parse_mode: 'Markdown' });
-      } else {
-        await bot.telegram.editMessageText(chatId, msgId, undefined,
-          header + '📎 Lista completa no arquivo abaixo:', { parse_mode: 'Markdown' }
-        );
-      }
-      await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename });
+      totalScanned++;
     }
+
+    if (allChannels.length === 0) {
+      return bot.telegram.editMessageText(chatId, msgId, undefined,
+        `✅ Varredura concluída\n\n` +
+        `🔍 ${validEntries.length} entr${validEntries.length > 1 ? 'adas' : 'ada'} verificada(s)\n` +
+        `❌ Nenhum stream encontrado`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+
+    const m3u      = buildM3U(allChannels);
+    const listText = buildListText(allChannels);
+    const filename = validEntries.length === 1
+      ? `iptv_${validEntries[0].replace(/[./]/g, '_')}.m3u`
+      : `iptv_multi_${Date.now()}.m3u`;
+
+    const header =
+      `🛰 *Resultado da varredura:*\n\n` +
+      `🔍 ${validEntries.length} entr${validEntries.length > 1 ? 'adas' : 'ada'} verificada(s)\n` +
+      `🖥 ${totalWithStreams} IP(s) com streams\n` +
+      `📺 ${allChannels.length} stream(s) total\n\n`;
+
+    const fullMsg = header + '```\n#EXTM3U\n\n' + listText + '```';
+    if (fullMsg.length <= 4000) {
+      await bot.telegram.editMessageText(chatId, msgId, undefined, fullMsg, { parse_mode: 'Markdown' });
+    } else {
+      await bot.telegram.editMessageText(chatId, msgId, undefined,
+        header + '📎 Lista completa no arquivo abaixo:', { parse_mode: 'Markdown' }
+      );
+    }
+    await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename });
 
   } catch (err) {
     console.error(err);
