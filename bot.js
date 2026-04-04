@@ -58,13 +58,13 @@ function zoomeyeSearch(query, page = 1) {
         try {
           const json = JSON.parse(data);
           console.log('ZoomEye HTTP status:', res.statusCode);
-          console.log('ZoomEye response:', JSON.stringify(json).slice(0, 300));
+          console.log('ZoomEye response:', JSON.stringify(json).slice(0, 500));
 
           if (json.error) {
             return reject(new Error(`ZoomEye: ${json.error}`));
           }
           if (res.statusCode !== 200) {
-            return reject(new Error(`ZoomEye: HTTP ${res.statusCode} - ${json.message || ''}`));
+            return reject(new Error(`ZoomEye: HTTP ${res.statusCode} - ${json.message || JSON.stringify(json).slice(0, 100)}`));
           }
 
           const ips = (json.matches || [])
@@ -73,8 +73,8 @@ function zoomeyeSearch(query, page = 1) {
 
           resolve({ ips, total: json.total || ips.length });
         } catch (e) {
-          console.log('ZoomEye raw:', data.slice(0, 300));
-          reject(new Error('Erro ao parsear resposta do ZoomEye'));
+          console.log('ZoomEye raw (não é JSON):', data.slice(0, 500));
+          reject(new Error(`ZoomEye resposta inválida: ${data.slice(0, 100)}`))
         }
       });
     });
