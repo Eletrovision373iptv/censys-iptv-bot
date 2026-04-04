@@ -42,7 +42,7 @@ function zoomeyeSearch(query, page = 1) {
     });
 
     const options = {
-      hostname: 'api.zoomeye.ai',
+      hostname: 'api.zoomeye.org',
       path: `/host/search?${params.toString()}`,
       method: 'GET',
       headers: {
