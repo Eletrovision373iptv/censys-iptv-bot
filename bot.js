@@ -35,10 +35,9 @@ server.listen(PORT, () => console.log(`🌐 Keep-alive na porta ${PORT}`));
 
 function hunterSearch(query, page = 1, pageSize = 100) {
   return new Promise((resolve, reject) => {
-    // Hunter.how usa query em base64
+    // Hunter.how usa query em base64 e key no header
     const b64query = Buffer.from(query).toString('base64');
     const params = new URLSearchParams({
-      api_key: HUNTER_KEY,
       search: b64query,
       page: page,
       page_size: pageSize,
@@ -49,7 +48,10 @@ function hunterSearch(query, page = 1, pageSize = 100) {
       hostname: 'api.hunter.how',
       path: `/search?${params.toString()}`,
       method: 'GET',
-      headers: { 'User-Agent': 'iptv-scanner-bot/1.0' },
+      headers: {
+        'User-Agent': 'iptv-scanner-bot/1.0',
+        'Authorization': `ApiKey ${HUNTER_KEY}`,
+      },
     };
 
     const req = https.request(options, res => {
