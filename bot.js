@@ -35,23 +35,19 @@ server.listen(PORT, () => console.log(`🌐 Keep-alive na porta ${PORT}`));
 
 function hunterSearch(query, page = 1, pageSize = 100) {
   return new Promise((resolve, reject) => {
-    // Hunter.how usa query em base64 e key no header
-    const b64query = Buffer.from(query).toString('base64');
+    // Hunter.how usa api-key na URL e query normal (sem base64)
     const params = new URLSearchParams({
-      search: b64query,
+      'api-key': HUNTER_KEY,
+      query: query,
       page: page,
       page_size: pageSize,
-      is_web: 1,
     });
 
     const options = {
       hostname: 'api.hunter.how',
       path: `/search?${params.toString()}`,
       method: 'GET',
-      headers: {
-        'User-Agent': 'iptv-scanner-bot/1.0',
-        'Authorization': `ApiKey ${HUNTER_KEY}`,
-      },
+      headers: { 'User-Agent': 'iptv-scanner-bot/1.0' },
     };
 
     const req = https.request(options, res => {
@@ -67,11 +63,11 @@ function hunterSearch(query, page = 1, pageSize = 100) {
             return reject(new Error(`Hunter: ${json.message || json.msg || `HTTP ${res.statusCode}`}`));
           }
 
-          const ips = (json.data?.list || [])
+          const ips = (json.data?.list || json.list || [])
             .map(h => h.ip)
             .filter(Boolean);
 
-          resolve({ ips, total: json.data?.total || ips.length });
+          resolve({ ips, total: json.data?.total || json.total || ips.length });
         } catch (e) {
           console.log('Hunter raw:', data.slice(0, 300));
           reject(new Error('Erro ao parsear resposta do Hunter'));
