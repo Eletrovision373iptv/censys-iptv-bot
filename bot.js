@@ -5,9 +5,9 @@ const https = require('https');
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const BOT_TOKEN   = process.env.BOT_TOKEN;
-const SHODAN_KEY  = process.env.SHODAN_KEY;
+const HUNTER_KEY  = process.env.HUNTER_KEY;
 if (!BOT_TOKEN)  throw new Error('BOT_TOKEN não definido!');
-if (!SHODAN_KEY) throw new Error('SHODAN_KEY não definida!');
+if (!HUNTER_KEY) throw new Error('HUNTER_KEY não definida!');
 
 const PORT = process.env.PORT || 3000;
 
@@ -31,20 +31,25 @@ const server = http.createServer((req, res) => {
 });
 server.listen(PORT, () => console.log(`🌐 Keep-alive na porta ${PORT}`));
 
-// ── Shodan API ────────────────────────────────────────────────────────────────
+// ── Hunter.how API ────────────────────────────────────────────────────────────
 
-function shodanSearch(query, page = 1) {
+function hunterSearch(query, page = 1, pageSize = 100) {
   return new Promise((resolve, reject) => {
+    // Hunter.how usa query em base64
+    const b64query = Buffer.from(query).toString('base64');
     const params = new URLSearchParams({
-      key: SHODAN_KEY,
-      query: query,
+      api_key: HUNTER_KEY,
+      search: b64query,
       page: page,
+      page_size: pageSize,
+      is_web: 1,
     });
 
     const options = {
-      hostname: 'api.shodan.io',
-      path: `/shodan/host/search?${params.toString()}`,
+      hostname: 'api.hunter.how',
+      path: `/search?${params.toString()}`,
       method: 'GET',
+      headers: { 'User-Agent': 'iptv-scanner-bot/1.0' },
     };
 
     const req = https.request(options, res => {
@@ -53,27 +58,27 @@ function shodanSearch(query, page = 1) {
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          console.log('Shodan HTTP status:', res.statusCode);
-          console.log('Shodan response:', JSON.stringify(json).slice(0, 300));
+          console.log('Hunter HTTP status:', res.statusCode);
+          console.log('Hunter response:', JSON.stringify(json).slice(0, 300));
 
-          if (json.error) {
-            return reject(new Error(`Shodan: ${json.error}`));
+          if (json.code !== 200) {
+            return reject(new Error(`Hunter: ${json.message || json.msg || `HTTP ${res.statusCode}`}`));
           }
 
-          const ips = (json.matches || [])
-            .map(h => h.ip_str)
+          const ips = (json.data?.list || [])
+            .map(h => h.ip)
             .filter(Boolean);
 
-          resolve({ ips, total: json.total || ips.length });
+          resolve({ ips, total: json.data?.total || ips.length });
         } catch (e) {
-          console.log('Shodan raw:', data.slice(0, 300));
-          reject(new Error('Erro ao parsear resposta do Shodan'));
+          console.log('Hunter raw:', data.slice(0, 300));
+          reject(new Error('Erro ao parsear resposta do Hunter'));
         }
       });
     });
 
     req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout Shodan')); });
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout Hunter')); });
     req.end();
   });
 }
@@ -191,9 +196,9 @@ function buildListText(channels) {
 bot.start(ctx => ctx.reply(
   '🛰 *Bot IPTV Scanner*\n\n' +
   'Comandos disponíveis:\n\n' +
-  '`/buscar` — busca IPs no Shodan e varre automaticamente\n' +
+  '`/buscar` — busca IPs no Hunter.how e varre automaticamente\n' +
   '`/buscar video/mp2t` — busca por tipo de stream\n' +
-  '`/buscar port:14001` — busca por porta\n\n' +
+  '`/buscar port="14001"` — busca por porta\n\n' +
   'Ou envie diretamente:\n' +
   '• IP: `89.187.190.183`\n' +
   '• Range: `89.187.190.0/24`',
@@ -202,11 +207,11 @@ bot.start(ctx => ctx.reply(
 
 bot.help(ctx => ctx.reply(
   '📖 *Comandos:*\n\n' +
-  '`/buscar <query>` — busca no Shodan + varre IPs\n' +
+  '`/buscar <query>` — busca no Hunter.how + varre IPs\n' +
   '`/buscar video/mp2t` — streams de vídeo\n' +
-  '`/buscar port:16071` — porta específica\n' +
-  '`/buscar country:BR video/mp2t` — por país\n\n' +
-  'Ou envie IP/range direto para varrer:\n' +
+  '`/buscar port="16071"` — porta específica\n' +
+  '`/buscar country="BR" && video/mp2t` — por país\n\n' +
+  'Ou envie IP/range direto:\n' +
   '• `89.187.190.183`\n' +
   '• `89.187.190.0/24`',
   { parse_mode: 'Markdown' }
@@ -217,7 +222,7 @@ bot.command('buscar', async ctx => {
   const query = ctx.message.text.replace('/buscar', '').trim() || 'video/mp2t';
 
   const statusMsg = await ctx.reply(
-    `🔍 Buscando no Shodan: \`${query}\`...`,
+    `🔍 Buscando no Hunter.how: \`${query}\`...`,
     { parse_mode: 'Markdown' }
   );
   const chatId = ctx.chat.id;
@@ -226,11 +231,11 @@ bot.command('buscar', async ctx => {
   try {
     // Etapa 1: buscar IPs no Censys
     await bot.telegram.editMessageText(chatId, msgId, undefined,
-      `🌐 Consultando Shodan para: \`${query}\`...`,
+      `🌐 Consultando Hunter.how para: \`${query}\`...`,
       { parse_mode: 'Markdown' }
     );
 
-    const { ips, total } = await shodanSearch(query);
+    const { ips, total } = await hunterSearch(query);
 
     if (ips.length === 0) {
       return bot.telegram.editMessageText(chatId, msgId, undefined,
@@ -240,7 +245,7 @@ bot.command('buscar', async ctx => {
     }
 
     await bot.telegram.editMessageText(chatId, msgId, undefined,
-      `✅ Shodan retornou ${ips.length} IP(s) (total: ~${total})\n` +
+      `✅ Hunter retornou ${ips.length} IP(s) (total: ~${total})\n` +
       `🔍 Iniciando varredura de portas ${PORT_RANGE_START}–${PORT_RANGE_END}...`,
       { parse_mode: 'Markdown' }
     );
@@ -284,7 +289,7 @@ bot.command('buscar', async ctx => {
     const filename = `censys_${query.replace(/[^a-z0-9]/gi, '_')}.m3u`;
 
     const header =
-      `🛰 *Resultado Shodan:* \`${query}\`\n\n` +
+      `🛰 *Resultado Hunter.how:* \`${query}\`\n\n` +
       `🌐 ${ips.length} IPs verificados\n` +
       `🖥 ${ipsWithStreams} IP(s) com streams\n` +
       `📺 ${allChannels.length} stream(s) encontrado(s)\n\n`;
@@ -453,6 +458,6 @@ bot.on('text', async ctx => {
 });
 
 bot.launch();
-console.log('🤖 Bot IPTV Scanner + Shodan rodando...');
+console.log('🤖 Bot IPTV Scanner + Hunter.how rodando...');
 process.once('SIGINT',  () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
