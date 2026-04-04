@@ -192,6 +192,14 @@ function buildListText(channels) {
   return text;
 }
 
+function buildTXT(channels) {
+  let txt = '';
+  channels.forEach((ch, i) => {
+    txt += `#EXTINF:-1,[FHD] ${ch.name} ${i + 1}\n${ch.url}\n`;
+  });
+  return txt;
+}
+
 // ── Bot handlers ──────────────────────────────────────────────────────────────
 
 bot.start(ctx => ctx.reply(
@@ -287,7 +295,9 @@ bot.command('buscar', async ctx => {
 
     const m3u      = buildM3U(allChannels);
     const listText = buildListText(allChannels);
-    const filename = `censys_${query.replace(/[^a-z0-9]/gi, '_')}.m3u`;
+    const txt      = buildTXT(allChannels);
+    const filename    = `censys_${query.replace(/[^a-z0-9]/gi, '_')}.m3u`;
+    const filenameTxt = `censys_${query.replace(/[^a-z0-9]/gi, '_')}.txt`;
 
     const header =
       `🛰 *Resultado ZoomEye:* \`${query}\`\n\n` +
@@ -301,12 +311,13 @@ bot.command('buscar', async ctx => {
       await bot.telegram.editMessageText(chatId, msgId, undefined, fullMsg, { parse_mode: 'Markdown' });
     } else {
       await bot.telegram.editMessageText(chatId, msgId, undefined,
-        header + '📎 Lista completa no arquivo abaixo:',
+        header + '📎 Lista completa nos arquivos abaixo:',
         { parse_mode: 'Markdown' }
       );
     }
 
     await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename });
+    await ctx.replyWithDocument({ source: Buffer.from(txt, 'utf-8'), filename: filenameTxt });
 
   } catch (err) {
     console.error(err);
@@ -412,9 +423,11 @@ bot.on('text', async ctx => {
 
     const m3u      = buildM3U(allChannels);
     const listText = buildListText(allChannels);
+    const txt      = buildTXT(allChannels);
     const filename = validEntries.length === 1
       ? `iptv_${validEntries[0].replace(/[./]/g, '_')}.m3u`
       : `iptv_multi_${Date.now()}.m3u`;
+    const filenameTxt = filename.replace('.m3u', '.txt');
 
     const header =
       `🛰 *Resultado da varredura:*\n\n` +
@@ -427,10 +440,11 @@ bot.on('text', async ctx => {
       await bot.telegram.editMessageText(chatId, msgId, undefined, fullMsg, { parse_mode: 'Markdown' });
     } else {
       await bot.telegram.editMessageText(chatId, msgId, undefined,
-        header + '📎 Lista completa no arquivo abaixo:', { parse_mode: 'Markdown' }
+        header + '📎 Lista completa nos arquivos abaixo:', { parse_mode: 'Markdown' }
       );
     }
     await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename });
+    await ctx.replyWithDocument({ source: Buffer.from(txt, 'utf-8'), filename: filenameTxt });
 
   } catch (err) {
     console.error(err);
