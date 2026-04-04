@@ -36,18 +36,19 @@ server.listen(PORT, () => console.log(`🌐 Keep-alive na porta ${PORT}`));
 function zoomeyeSearch(query, page = 1) {
   return new Promise((resolve, reject) => {
     const params = new URLSearchParams({
-      qbase64: Buffer.from(query).toString('base64'),
+      query: query,
       page: page,
       pagesize: 100,
     });
 
     const options = {
       hostname: 'api.zoomeye.ai',
-      path: `/host/search?${params.toString()}`,
+      path: `/v2/search?${params.toString()}`,
       method: 'GET',
       headers: {
         'API-KEY': ZOOMEYE_KEY,
         'User-Agent': 'iptv-scanner-bot/1.0',
+        'Accept': 'application/json',
       },
     };
 
@@ -67,14 +68,13 @@ function zoomeyeSearch(query, page = 1) {
             return reject(new Error(`ZoomEye: HTTP ${res.statusCode} - ${json.message || JSON.stringify(json).slice(0, 100)}`));
           }
 
-          const ips = (json.matches || [])
-            .map(h => h.ip)
-            .filter(Boolean);
-
-          resolve({ ips, total: json.total || ips.length });
+          // API v2: data.list[] ou matches[]
+          const list = json.data?.list || json.matches || [];
+          const ips = list.map(h => h.ip).filter(Boolean);
+          resolve({ ips, total: json.data?.total || json.total || ips.length });
         } catch (e) {
           console.log('ZoomEye raw (não é JSON):', data.slice(0, 500));
-          reject(new Error(`ZoomEye resposta inválida: ${data.slice(0, 100)}`))
+          reject(new Error(`ZoomEye resposta inválida: ${data.slice(0, 100)}`));
         }
       });
     });
