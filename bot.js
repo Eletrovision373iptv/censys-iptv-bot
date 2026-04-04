@@ -35,17 +35,19 @@ server.listen(PORT, () => console.log(`🌐 Keep-alive na porta ${PORT}`));
 
 function hunterSearch(query, page = 1, pageSize = 100) {
   return new Promise((resolve, reject) => {
-    // Hunter.how exige start_time e end_time (últimos 30 dias)
-    const now = Math.floor(Date.now() / 1000);
-    const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
+    // Hunter.how exige datas no formato YYYY-MM-DD
+    const now = new Date();
+    const past = new Date();
+    past.setDate(past.getDate() - 30);
+    const fmt = d => d.toISOString().slice(0, 10);
 
     const params = new URLSearchParams({
       'api-key': HUNTER_KEY,
       query: query,
       page: page,
       page_size: pageSize,
-      start_time: thirtyDaysAgo,
-      end_time: now,
+      start_time: fmt(past),
+      end_time: fmt(now),
     });
 
     const options = {
