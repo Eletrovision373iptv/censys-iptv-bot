@@ -43,10 +43,10 @@ function zoomeyeSearch(query, page = 1) {
 
     const options = {
       hostname: 'api.zoomeye.ai',
-      path: `/v2/search?${params.toString()}`,
+      path: `/host/search?${params.toString()}`,
       method: 'GET',
       headers: {
-        'API-KEY': ZOOMEYE_KEY,
+        'Authorization': `JWT ${ZOOMEYE_KEY}`,
         'User-Agent': 'iptv-scanner-bot/1.0',
         'Accept': 'application/json',
       },
@@ -68,10 +68,9 @@ function zoomeyeSearch(query, page = 1) {
             return reject(new Error(`ZoomEye: HTTP ${res.statusCode} - ${json.message || JSON.stringify(json).slice(0, 100)}`));
           }
 
-          // API v2: data.list[] ou matches[]
-          const list = json.data?.list || json.matches || [];
+          const list = json.matches || json.data?.list || [];
           const ips = list.map(h => h.ip).filter(Boolean);
-          resolve({ ips, total: json.data?.total || json.total || ips.length });
+          resolve({ ips, total: json.total || json.data?.total || ips.length });
         } catch (e) {
           console.log('ZoomEye raw (não é JSON):', data.slice(0, 500));
           reject(new Error(`ZoomEye resposta inválida: ${data.slice(0, 100)}`));
