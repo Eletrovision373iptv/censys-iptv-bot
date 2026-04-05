@@ -207,12 +207,13 @@ function getChannelName(index) {
 }
 
 function buildM3U(channels, serverName, scanDate) {
-  let m3u = `#EXTM3U\n`;
+  let m3u = `#EXTM3U url-tvg="" tvg-shift=0 cache=500\n`;
   m3u += `# Servidor: ${serverName}\n`;
   m3u += `# Scan: ${scanDate}\n\n`;
   channels.forEach((ch, i) => {
     const name = getChannelName(i);
-    m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}" group-title="${serverName}",[FHD] ${name} ${i + 1}\n`;
+    const num  = i + 1;
+    m3u += `#EXTINF:-1 tvg-id="${name}" tvg-name="${name}" tvg-logo="${LOGO_URL}" group-title="${serverName}",[FHD] ${name} ${num}\n`;
     m3u += `${ch.url}\n`;
   });
   return m3u;
