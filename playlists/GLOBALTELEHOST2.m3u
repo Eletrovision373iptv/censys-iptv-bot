@@ -1,0 +1,32 @@
+#EXTM3U url-tvg="" tvg-shift=0 cache=500
+# Servidor: GLOBALTELEHOST2
+# Scan: 05/04/2026, 19:58:13
+
+#EXTINF:-1 tvg-id="ESPN" tvg-name="ESPN" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] ESPN 1
+http://134.195.198.167:14030/live.ts
+#EXTINF:-1 tvg-id="GLOBO" tvg-name="GLOBO" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] GLOBO 2
+http://134.195.198.167:14152/live.ts
+#EXTINF:-1 tvg-id="RECORD" tvg-name="RECORD" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] RECORD 3
+http://134.195.198.167:14586/live.ts
+#EXTINF:-1 tvg-id="SBT" tvg-name="SBT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] SBT 4
+http://134.195.198.167:14631/live.ts
+#EXTINF:-1 tvg-id="SPORTV" tvg-name="SPORTV" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] SPORTV 5
+http://134.195.198.183:14016/live.ts
+#EXTINF:-1 tvg-id="PREMIERE" tvg-name="PREMIERE" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] PREMIERE 6
+http://134.195.198.183:14028/live.ts
+#EXTINF:-1 tvg-id="BAND" tvg-name="BAND" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] BAND 7
+http://134.195.198.183:14029/live.ts
+#EXTINF:-1 tvg-id="DISCOVERY" tvg-name="DISCOVERY" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] DISCOVERY 8
+http://134.195.198.183:14509/live.ts
+#EXTINF:-1 tvg-id="CNN BRASIL" tvg-name="CNN BRASIL" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] CNN BRASIL 9
+http://134.195.198.183:14712/live.ts
+#EXTINF:-1 tvg-id="GNT" tvg-name="GNT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] GNT 10
+http://134.195.198.183:14714/live.ts
+#EXTINF:-1 tvg-id="MULTISHOW" tvg-name="MULTISHOW" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] MULTISHOW 11
+http://134.195.198.183:14715/live.ts
+#EXTINF:-1 tvg-id="TNT" tvg-name="TNT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] TNT 12
+http://134.195.198.183:14716/live.ts
+#EXTINF:-1 tvg-id="HBO" tvg-name="HBO" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] HBO 13
+http://134.195.198.183:14719/live.ts
+#EXTINF:-1 tvg-id="TELECINE" tvg-name="TELECINE" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="GLOBALTELEHOST2",[FHD] TELECINE 14
+http://134.195.198.183:14720/live.ts
