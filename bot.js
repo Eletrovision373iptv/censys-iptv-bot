@@ -20,6 +20,32 @@ const MAX_CONCURRENT   = 80;
 const STREAM_ENDPOINTS = [
   '/live.ts', '/stream', '/stream.ts', '/live', '/video.ts', '/index.m3u8',
 ];
+
+// Logo padrão para todos os canais
+const LOGO_URL = 'https://i.imgur.com/dPaFa7x.png';
+
+// Nomes aleatórios de canais brasileiros
+const CHANNEL_NAMES = [
+  'ESPN','GLOBO','RECORD','SBT','SPORTV','PREMIERE','BAND','DISCOVERY',
+  'CNN BRASIL','GNT','MULTISHOW','TNT','HBO','TELECINE','MEGAPIX',
+  'COMBATE','PARAMOUNT','UNIVERSAL','SyFy','AXN','FOX','FX','SPACE',
+  'HISTORY','NATIONAL GEOGRAPHIC','ANIMAL PLANET','DISCOVERY SCIENCE',
+  'CARTOON NETWORK','DISNEY CHANNEL','NICKELODEON','COMEDY CENTRAL',
+  'VH1','MTV','BIS','VIVA','TV CULTURA','TV BRASIL','REDE TV',
+  'GAZETA','JOVEM PAN NEWS','RECORD NEWS','GLOBONEWS','BAND NEWS',
+  'PREMIERE 1','PREMIERE 2','PREMIERE 3','PREMIERE 4','PREMIERE 5',
+  'SPORTV 2','SPORTV 3','ESPN 2','ESPN 3','ESPN 4',
+  'HBO 2','HBO FAMILY','HBO HITS','HBO PLUS','HBO SIGNATURE',
+  'TELECINE FUN','TELECINE TOUCH','TELECINE PIPOCA','TELECINE CULT',
+  'CINEMAX','CINEMAX 2','MAX PRIME','TELECINE ACTION',
+  'DISCOVERY HOME','DISCOVERY TURBO','DISCOVERY THEATER',
+  'NAT GEO WILD','DISNEY JUNIOR','DISNEY XD','BOOMERANG',
+  'TOONCAST','STUDIO UNIVERSAL','FILM & ARTS','ARTE 1',
+  'OFF','LIFETIME','WE TV','E! ENTERTAINMENT','PEOPLE+ARTS',
+];
+
+// Estado de conversa: aguardando nome do servidor
+const waitingForName = new Map(); // chatId -> { entries, channels }
 // ──────────────────────────────────────────────────────────────────────────────
 
 const bot = new Telegraf(BOT_TOKEN);
@@ -176,28 +202,72 @@ async function scanIPFull(ip) {
   return results.filter(Boolean);
 }
 
-function buildM3U(channels) {
-  let m3u = '#EXTM3U\n\n';
+function getChannelName(index) {
+  return CHANNEL_NAMES[index % CHANNEL_NAMES.length];
+}
+
+function buildM3U(channels, serverName, scanDate) {
+  let m3u = `#EXTM3U\n`;
+  m3u += `# Servidor: ${serverName}\n`;
+  m3u += `# Scan: ${scanDate}\n\n`;
   channels.forEach((ch, i) => {
-    m3u += `#EXTINF:-1,[FHD] ${ch.name} ${i + 1}\n${ch.url}\n`;
+    const name = getChannelName(i);
+    m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}" group-title="${serverName}",[FHD] ${name} ${i + 1}\n`;
+    m3u += `${ch.url}\n`;
   });
   return m3u;
+}
+
+function buildTXT(channels, serverName, scanDate) {
+  let txt = `Servidor: ${serverName}\n`;
+  txt += `Scan: ${scanDate}\n`;
+  txt += `Total: ${channels.length} canais\n\n`;
+  channels.forEach((ch, i) => {
+    const name = getChannelName(i);
+    txt += `${ch.url}\n`;
+    txt += `#EXTINF:-1,[FHD] ${name} ${i + 1}\n`;
+  });
+  return txt;
 }
 
 function buildListText(channels) {
   let text = '';
   channels.forEach((ch, i) => {
-    text += `#EXTINF:-1,[FHD] ${ch.name} ${i + 1}\n${ch.url}\n`;
+    const name = getChannelName(i);
+    text += `#EXTINF:-1,[FHD] ${name} ${i + 1}\n${ch.url}\n`;
   });
   return text;
 }
 
-function buildTXT(channels) {
-  let txt = '';
-  channels.forEach((ch, i) => {
-    txt += `#EXTINF:-1,[FHD] ${ch.name} ${i + 1}\n${ch.url}\n`;
-  });
-  return txt;
+async function sendResults(ctx, channels, validEntries, totalWithStreams, serverName) {
+  const scanDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const m3u      = buildM3U(channels, serverName, scanDate);
+  const txt      = buildTXT(channels, serverName, scanDate);
+  const listText = buildListText(channels);
+
+  const ts = Date.now();
+  const safeName = serverName.replace(/[^a-z0-9]/gi, '_');
+  const filenameM3U = `${safeName}_${ts}.m3u`;
+  const filenameTXT = `${safeName}_${ts}.txt`;
+
+  const header =
+    `🛰 *${serverName}*\n` +
+    `📅 ${scanDate}\n\n` +
+    `🔍 ${validEntries.length} IP(s) verificado(s)\n` +
+    `🖥 ${totalWithStreams} IP(s) com streams\n` +
+    `📺 ${channels.length} canal(is) encontrado(s)\n\n`;
+
+  // Prévia — primeiras 15 entradas como mensagem de texto
+  const preview = listText.split('\n').slice(0, 30).join('\n');
+  await ctx.reply(
+    header + '```\n' + preview + (channels.length > 15 ? '\n...' : '') + '\n```',
+    { parse_mode: 'Markdown' }
+  );
+
+  // Arquivo .m3u
+  await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename: filenameM3U });
+  // Arquivo .txt
+  await ctx.replyWithDocument({ source: Buffer.from(txt, 'utf-8'), filename: filenameTXT });
 }
 
 // ── Bot handlers ──────────────────────────────────────────────────────────────
@@ -293,31 +363,13 @@ bot.command('buscar', async ctx => {
       );
     }
 
-    const m3u      = buildM3U(allChannels);
-    const listText = buildListText(allChannels);
-    const txt      = buildTXT(allChannels);
-    const filename    = `censys_${query.replace(/[^a-z0-9]/gi, '_')}.m3u`;
-    const filenameTxt = `censys_${query.replace(/[^a-z0-9]/gi, '_')}.txt`;
+    await bot.telegram.editMessageText(chatId, msgId, undefined,
+      `✅ ${allChannels.length} canal(is) encontrado(s)!\n📦 Gerando arquivos...`,
+      { parse_mode: 'Markdown' }
+    );
 
-    const header =
-      `🛰 *Resultado ZoomEye:* \`${query}\`\n\n` +
-      `🌐 ${ips.length} IPs verificados\n` +
-      `🖥 ${ipsWithStreams} IP(s) com streams\n` +
-      `📺 ${allChannels.length} stream(s) encontrado(s)\n\n`;
-
-    const fullMsg = header + '```\n#EXTM3U\n\n' + listText + '```';
-
-    if (fullMsg.length <= 4000) {
-      await bot.telegram.editMessageText(chatId, msgId, undefined, fullMsg, { parse_mode: 'Markdown' });
-    } else {
-      await bot.telegram.editMessageText(chatId, msgId, undefined,
-        header + '📎 Lista completa nos arquivos abaixo:',
-        { parse_mode: 'Markdown' }
-      );
-    }
-
-    await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename });
-    await ctx.replyWithDocument({ source: Buffer.from(txt, 'utf-8'), filename: filenameTxt });
+    const serverName = `ZoomEye: ${query}`;
+    await sendResults(ctx, allChannels, ips, ipsWithStreams, serverName);
 
   } catch (err) {
     console.error(err);
@@ -329,10 +381,22 @@ bot.command('buscar', async ctx => {
 
 // IP único, múltiplos IPs ou CIDR direto
 bot.on('text', async ctx => {
-  const input = ctx.message.text.trim();
+  const input  = ctx.message.text.trim();
+  const chatId = ctx.chat.id;
 
-  // Extrai todas as linhas válidas (IPs ou CIDRs)
-  const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
+  // ── Se estamos aguardando o nome do servidor ──────────────────────────────
+  if (waitingForName.has(chatId)) {
+    const { entries, channels, totalWithStreams } = waitingForName.get(chatId);
+    waitingForName.delete(chatId);
+
+    const serverName = input || 'Servidor IPTV';
+    await ctx.reply(`✅ Nome: *${serverName}*\n📦 Gerando arquivos...`, { parse_mode: 'Markdown' });
+    await sendResults(ctx, channels, entries, totalWithStreams, serverName);
+    return;
+  }
+
+  // ── Extrai linhas válidas (IPs ou CIDRs) ─────────────────────────────────
+  const lines        = input.split('\n').map(l => l.trim()).filter(Boolean);
   const validEntries = lines.filter(l => isValidIP(l) || isValidCIDR(l));
 
   if (validEntries.length === 0) {
@@ -348,15 +412,14 @@ bot.on('text', async ctx => {
   }
 
   const statusMsg = await ctx.reply(
-    `🔍 Iniciando varredura de ${validEntries.length} entr${validEntries.length > 1 ? 'adas' : 'ada'}...`,
+    `🔍 Iniciando varredura de ${validEntries.length} IP(s)...`,
     { parse_mode: 'Markdown' }
   );
-  const chatId = ctx.chat.id;
-  const msgId  = statusMsg.message_id;
+  const msgId = statusMsg.message_id;
 
   try {
     const allChannels = [];
-    let totalScanned = 0;
+    let totalScanned    = 0;
     let totalWithStreams = 0;
 
     for (const entry of validEntries) {
@@ -372,7 +435,6 @@ bot.on('text', async ctx => {
       } catch (_) {}
 
       if (isIP) {
-        // IP único — varredura completa com progresso
         const allPorts = [];
         for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) allPorts.push(p);
 
@@ -389,23 +451,15 @@ bot.on('text', async ctx => {
           const streamResults = await Promise.all(openPorts.map(async port => {
             const endpoint = await checkStream(entry, port);
             if (!endpoint) return null;
-            return { name: 'Canal', url: `http://${entry}:${port}${endpoint}` };
+            return { url: `http://${entry}:${port}${endpoint}` };
           }));
           const channels = streamResults.filter(Boolean);
-          if (channels.length > 0) {
-            totalWithStreams++;
-            allChannels.push(...channels);
-          }
+          if (channels.length > 0) { totalWithStreams++; allChannels.push(...channels); }
         }
-
       } else {
-        // CIDR — varre cada IP do range
         for (const ip of ips) {
           const channels = await scanIPFull(ip);
-          if (channels.length > 0) {
-            totalWithStreams++;
-            allChannels.push(...channels);
-          }
+          if (channels.length > 0) { totalWithStreams++; allChannels.push(...channels); }
         }
       }
 
@@ -414,37 +468,22 @@ bot.on('text', async ctx => {
 
     if (allChannels.length === 0) {
       return bot.telegram.editMessageText(chatId, msgId, undefined,
-        `✅ Varredura concluída\n\n` +
-        `🔍 ${validEntries.length} entr${validEntries.length > 1 ? 'adas' : 'ada'} verificada(s)\n` +
-        `❌ Nenhum stream encontrado`,
+        `✅ Concluído\n\n🔍 ${validEntries.length} IP(s) verificados\n❌ Nenhum stream encontrado`,
         { parse_mode: 'Markdown' }
       );
     }
 
-    const m3u      = buildM3U(allChannels);
-    const listText = buildListText(allChannels);
-    const txt      = buildTXT(allChannels);
-    const filename = validEntries.length === 1
-      ? `iptv_${validEntries[0].replace(/[./]/g, '_')}.m3u`
-      : `iptv_multi_${Date.now()}.m3u`;
-    const filenameTxt = filename.replace('.m3u', '.txt');
-
-    const header =
-      `🛰 *Resultado da varredura:*\n\n` +
-      `🔍 ${validEntries.length} entr${validEntries.length > 1 ? 'adas' : 'ada'} verificada(s)\n` +
+    // Varredura concluída — pergunta o nome do servidor
+    await bot.telegram.editMessageText(chatId, msgId, undefined,
+      `✅ Varredura concluída!\n\n` +
       `🖥 ${totalWithStreams} IP(s) com streams\n` +
-      `📺 ${allChannels.length} stream(s) total\n\n`;
+      `📺 ${allChannels.length} canal(is) encontrado(s)\n\n` +
+      `📝 *Qual o nome deste servidor?*\n_(ex: Globo Server, Brasil IPTV, ...)_`,
+      { parse_mode: 'Markdown' }
+    );
 
-    const fullMsg = header + '```\n#EXTM3U\n\n' + listText + '```';
-    if (fullMsg.length <= 4000) {
-      await bot.telegram.editMessageText(chatId, msgId, undefined, fullMsg, { parse_mode: 'Markdown' });
-    } else {
-      await bot.telegram.editMessageText(chatId, msgId, undefined,
-        header + '📎 Lista completa nos arquivos abaixo:', { parse_mode: 'Markdown' }
-      );
-    }
-    await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename });
-    await ctx.replyWithDocument({ source: Buffer.from(txt, 'utf-8'), filename: filenameTxt });
+    // Salva estado aguardando resposta
+    waitingForName.set(chatId, { entries: validEntries, channels: allChannels, totalWithStreams });
 
   } catch (err) {
     console.error(err);
