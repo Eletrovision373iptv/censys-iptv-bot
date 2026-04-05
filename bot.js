@@ -6,6 +6,10 @@ const https = require('https');
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const BOT_TOKEN    = process.env.BOT_TOKEN;
 const ZOOMEYE_KEY  = process.env.ZOOMEYE_KEY;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_USER  = 'Eletrovision373iptv';
+const GITHUB_REPO  = 'censys-iptv-bot';
+const GITHUB_BRANCH = 'main';
 if (!BOT_TOKEN)   throw new Error('BOT_TOKEN não definido!');
 if (!ZOOMEYE_KEY) throw new Error('ZOOMEYE_KEY não definida!');
 
@@ -240,16 +244,93 @@ function buildListText(channels) {
   return text;
 }
 
+// Salva ou atualiza arquivo no GitHub
+async function saveToGitHub(filename, content) {
+  if (!GITHUB_TOKEN) return null;
+
+  const path = `playlists/${filename}`;
+  const base64 = Buffer.from(content, 'utf-8').toString('base64');
+
+  // Primeiro tenta pegar o SHA do arquivo existente
+  let sha = null;
+  try {
+    await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.github.com',
+        path: `/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${path}`,
+        method: 'GET',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'User-Agent': 'iptv-scanner-bot',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      };
+      const req = https.request(options, res => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            sha = json.sha || null;
+          } catch (_) {}
+          resolve();
+        });
+      });
+      req.on('error', resolve);
+      req.end();
+    });
+  } catch (_) {}
+
+  // Salva ou atualiza
+  return new Promise((resolve) => {
+    const body = JSON.stringify({
+      message: sha ? `Atualizar ${filename}` : `Adicionar ${filename}`,
+      content: base64,
+      branch: GITHUB_BRANCH,
+      ...(sha ? { sha } : {}),
+    });
+
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${path}`,
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'User-Agent': 'iptv-scanner-bot',
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    };
+
+    const req = https.request(options, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 200 || res.statusCode === 201) {
+          resolve(`https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${path}`);
+        } else {
+          console.log('GitHub error:', data.slice(0, 200));
+          resolve(null);
+        }
+      });
+    });
+
+    req.on('error', () => resolve(null));
+    req.write(body);
+    req.end();
+  });
+}
+
 async function sendResults(ctx, channels, validEntries, totalWithStreams, serverName) {
   const scanDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
   const m3u      = buildM3U(channels, serverName, scanDate);
   const txt      = buildTXT(channels, serverName, scanDate);
   const listText = buildListText(channels);
 
-  const ts = Date.now();
-  const safeName = serverName.replace(/[^a-z0-9]/gi, '_');
-  const filenameM3U = `${safeName}_${ts}.m3u`;
-  const filenameTXT = `${safeName}_${ts}.txt`;
+  const safeName    = serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase();
+  const filenameM3U = `${safeName}.m3u`;
+  const filenameTXT = `${safeName}.txt`;
 
   const header =
     `🛰 *${serverName}*\n` +
@@ -265,10 +346,22 @@ async function sendResults(ctx, channels, validEntries, totalWithStreams, server
     { parse_mode: 'Markdown' }
   );
 
-  // Arquivo .m3u
-  await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename: filenameM3U });
-  // Arquivo .txt
-  await ctx.replyWithDocument({ source: Buffer.from(txt, 'utf-8'), filename: filenameTXT });
+  // Salva no GitHub em paralelo com envio dos arquivos
+  const [githubUrl] = await Promise.all([
+    saveToGitHub(filenameM3U, m3u),
+    ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename: filenameM3U }),
+    ctx.replyWithDocument({ source: Buffer.from(txt, 'utf-8'), filename: filenameTXT }),
+  ]);
+
+  // Mostra link do GitHub se salvou com sucesso
+  if (githubUrl) {
+    await ctx.reply(
+      `✅ *Playlist salva no GitHub!*\n\n` +
+      `🔗 Link direto para usar no player:\n\`${githubUrl}\`\n\n` +
+      `_Próximo scan com o mesmo nome atualiza automaticamente._`,
+      { parse_mode: 'Markdown' }
+    );
+  }
 }
 
 // ── Bot handlers ──────────────────────────────────────────────────────────────
