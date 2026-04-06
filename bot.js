@@ -198,10 +198,13 @@ async function scanIPFull(ip) {
   for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) allPorts.push(p);
   const openPorts = await scanPorts(ip, allPorts, null);
   if (openPorts.length === 0) return [];
-  const results = await Promise.all(openPorts.map(async port => {
+  const results = await Promise.all(openPorts.map(async (port, idx) => {
     const endpoint = await checkStream(ip, port);
     if (!endpoint) return null;
-    return { name: `Canal`, url: `http://${ip}:${port}${endpoint}` };
+    const quality = endpoint.includes('.ts') ? 'FHD' : 'HD';
+    const name = getChannelName(idx);
+    console.log(`[${quality}] -> ${name} (Porta: ${port})`);
+    return { url: `http://${ip}:${port}${endpoint}` };
   }));
   return results.filter(Boolean);
 }
@@ -542,9 +545,12 @@ bot.on('text', async ctx => {
         });
 
         if (openPorts.length > 0) {
-          const streamResults = await Promise.all(openPorts.map(async port => {
+          const streamResults = await Promise.all(openPorts.map(async (port, idx) => {
             const endpoint = await checkStream(entry, port);
             if (!endpoint) return null;
+            const quality = endpoint.includes('.ts') ? 'FHD' : 'HD';
+            const name = getChannelName(idx);
+            console.log(`[${quality}] -> ${name} (Porta: ${port})`);
             return { url: `http://${entry}:${port}${endpoint}` };
           }));
           const channels = streamResults.filter(Boolean);
