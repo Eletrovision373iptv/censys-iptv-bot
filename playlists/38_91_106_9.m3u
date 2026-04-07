@@ -1,0 +1,42 @@
+#EXTM3U url-tvg="" tvg-shift=0 cache=500
+# Servidor: 38.91.106.9
+# Scan: 07/04/2026, 19:32:08
+
+#EXTINF:-1 tvg-id="ESPN" tvg-name="ESPN" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] ESPN 1
+http://38.91.106.9:14129/live.ts
+#EXTINF:-1 tvg-id="GLOBO" tvg-name="GLOBO" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] GLOBO 2
+http://38.91.106.9:14130/live.ts
+#EXTINF:-1 tvg-id="RECORD" tvg-name="RECORD" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] RECORD 3
+http://38.91.106.9:14164/live.ts
+#EXTINF:-1 tvg-id="SBT" tvg-name="SBT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] SBT 4
+http://38.91.106.9:14167/live.ts
+#EXTINF:-1 tvg-id="SPORTV" tvg-name="SPORTV" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] SPORTV 5
+http://38.91.106.9:14241/live.ts
+#EXTINF:-1 tvg-id="PREMIERE" tvg-name="PREMIERE" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] PREMIERE 6
+http://38.91.106.9:14296/live.ts
+#EXTINF:-1 tvg-id="BAND" tvg-name="BAND" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] BAND 7
+http://38.91.106.9:14362/live.ts
+#EXTINF:-1 tvg-id="DISCOVERY" tvg-name="DISCOVERY" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] DISCOVERY 8
+http://38.91.106.9:14367/live.ts
+#EXTINF:-1 tvg-id="CNN BRASIL" tvg-name="CNN BRASIL" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] CNN BRASIL 9
+http://38.91.106.9:14483/live.ts
+#EXTINF:-1 tvg-id="GNT" tvg-name="GNT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] GNT 10
+http://38.91.106.9:16005/live.ts
+#EXTINF:-1 tvg-id="MULTISHOW" tvg-name="MULTISHOW" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] MULTISHOW 11
+http://38.91.106.9:16261/live.ts
+#EXTINF:-1 tvg-id="TNT" tvg-name="TNT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] TNT 12
+http://38.91.106.9:16262/live.ts
+#EXTINF:-1 tvg-id="HBO" tvg-name="HBO" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] HBO 13
+http://38.91.106.9:16301/live.ts
+#EXTINF:-1 tvg-id="TELECINE" tvg-name="TELECINE" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] TELECINE 14
+http://38.91.106.9:16326/live.ts
+#EXTINF:-1 tvg-id="MEGAPIX" tvg-name="MEGAPIX" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] MEGAPIX 15
+http://38.91.106.9:16380/live.ts
+#EXTINF:-1 tvg-id="COMBATE" tvg-name="COMBATE" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] COMBATE 16
+http://38.91.106.9:16386/live.ts
+#EXTINF:-1 tvg-id="PARAMOUNT" tvg-name="PARAMOUNT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] PARAMOUNT 17
+http://38.91.106.9:16408/live.ts
+#EXTINF:-1 tvg-id="UNIVERSAL" tvg-name="UNIVERSAL" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] UNIVERSAL 18
+http://38.91.106.9:16429/live.ts
+#EXTINF:-1 tvg-id="SyFy" tvg-name="SyFy" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="38.91.106.9",[FHD] SyFy 19
+http://38.91.106.9:16430/live.ts
