@@ -10,6 +10,7 @@ const GITHUB_USER  = 'Eletrovision373iptv';
 const GITHUB_REPO  = 'censys-iptv-bot';
 const GITHUB_BRANCH = 'main';
 
+// Apenas o BOT_TOKEN é obrigatório para ligar
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN não definido!');
 
 const PORT = process.env.PORT || 3000;
@@ -47,7 +48,7 @@ const server = http.createServer((req, res) => {
 });
 server.listen(PORT, () => console.log(`🌐 Servidor ativo na porta ${PORT}`));
 
-// ── Funções Scanner (Originais) ───────────────────────────────────────────────
+// ── Funções Scanner (Originais do seu código) ─────────────────────────────────
 
 function isValidIP(ip) {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) &&
@@ -139,21 +140,19 @@ async function scanIPFull(ip) {
   return results.filter(Boolean);
 }
 
-function getChannelName(index) {
-  return CHANNEL_NAMES[index % CHANNEL_NAMES.length];
-}
-
-// ── Funções de Playlist e GitHub (Originais) ──────────────────────────────────
+// ── Playlist ──────────────────────────────────────────────────────────────────
 
 function buildM3U(channels, serverName, scanDate) {
   let m3u = `#EXTM3U url-tvg="" tvg-shift=0 cache=500\n`;
   m3u += `# Servidor: ${serverName}\n# Scan: ${scanDate}\n\n`;
   channels.forEach((ch, i) => {
-    const name = getChannelName(i);
-    m3u += `#EXTINF:-1 tvg-id="${name}" tvg-name="${name}" tvg-logo="${LOGO_URL}" group-title="${serverName}",[FHD] ${name} ${i+1}\n${ch.url}\n`;
+    const name = CHANNEL_NAMES[i % CHANNEL_NAMES.length];
+    m3u += `#EXTINF:-1 tvg-id="${name}" tvg-logo="${LOGO_URL}" group-title="${serverName}",[FHD] ${name} ${i+1}\n${ch.url}\n`;
   });
   return m3u;
 }
+
+// ── GitHub ────────────────────────────────────────────────────────────────────
 
 async function saveToGitHub(filename, content) {
   if (!GITHUB_TOKEN) return null;
@@ -201,19 +200,17 @@ async function sendResults(ctx, channels, validEntries, totalWithStreams, server
   const safeName = serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase();
   const filenameM3U = `${safeName}.m3u`;
 
-  await ctx.reply(`🛰 *${serverName}*\n🔍 ${validEntries.length} IP(s) verificado(s)\n📺 ${channels.length} canal(is) encontrado(s)`, { parse_mode: 'Markdown' });
+  await ctx.reply(`🛰 *${serverName}*\n📺 Encontrados: ${channels.length} canais`, { parse_mode: 'Markdown' });
 
   const githubUrl = await saveToGitHub(filenameM3U, m3u);
   await ctx.replyWithDocument({ source: Buffer.from(m3u, 'utf-8'), filename: filenameM3U });
 
-  if (githubUrl) {
-    await ctx.reply(`✅ *Playlist salva no GitHub!*\n\`${githubUrl}\``, { parse_mode: 'Markdown' });
-  }
+  if (githubUrl) ctx.reply(`✅ Link: \`${githubUrl}\``, { parse_mode: 'Markdown' });
 }
 
-// ── Handlers (Apenas Manual) ──────────────────────────────────────────────────
+// ── Handlers (SÓ IP MANUAL) ───────────────────────────────────────────────────
 
-bot.start(ctx => ctx.reply('🚀 Bot pronto! Envie os IPs ou Ranges (ex: 89.187.190.0/24).'));
+bot.start(ctx => ctx.reply('🚀 Envie os IPs ou Ranges para escanear.'));
 
 bot.on('text', async ctx => {
   const input = ctx.message.text.trim();
@@ -222,7 +219,6 @@ bot.on('text', async ctx => {
   if (waitingForName.has(chatId)) {
     const data = waitingForName.get(chatId);
     waitingForName.delete(chatId);
-    await ctx.reply(`✅ Gerando arquivos para: ${input}...`);
     await sendResults(ctx, data.channels, data.entries, data.totalWithStreams, input);
     return;
   }
@@ -230,9 +226,9 @@ bot.on('text', async ctx => {
   const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
   const validEntries = lines.filter(l => isValidIP(l) || isValidCIDR(l));
 
-  if (validEntries.length === 0) return ctx.reply('❌ Envie IPs válidos.');
+  if (validEntries.length === 0) return;
 
-  const statusMsg = await ctx.reply(`🔍 Iniciando varredura em ${validEntries.length} entrada(s)...`);
+  const statusMsg = await ctx.reply(`🔍 Iniciando varredura...`);
 
   try {
     const allChannels = [];
@@ -240,7 +236,6 @@ bot.on('text', async ctx => {
 
     for (const entry of validEntries) {
       const ips = isValidCIDR(entry) ? expandCIDR(entry) : [entry];
-      
       for (const ip of ips) {
         await ctx.telegram.editMessageText(chatId, statusMsg.message_id, undefined, `⏳ Verificando: \`${ip}\`...`, { parse_mode: 'Markdown' });
         const channels = await scanIPFull(ip);
@@ -253,7 +248,7 @@ bot.on('text', async ctx => {
 
     if (allChannels.length === 0) return ctx.reply('❌ Nenhum stream encontrado.');
 
-    await ctx.reply(`✅ Concluído! ${allChannels.length} canais encontrados.\n\n📝 *Qual o nome do servidor?*`, { parse_mode: 'Markdown' });
+    await ctx.reply(`✅ Concluído! ${allChannels.length} canais.\n\n📝 *Qual o nome do servidor?*`, { parse_mode: 'Markdown' });
     waitingForName.set(chatId, { entries: validEntries, channels: allChannels, totalWithStreams });
 
   } catch (err) {
@@ -262,6 +257,4 @@ bot.on('text', async ctx => {
 });
 
 bot.launch();
-console.log('🤖 Bot IPTV Scanner Manual Online...');
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+console.log('🤖 Bot Online (Apenas Manual)...');
