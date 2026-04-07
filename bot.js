@@ -193,7 +193,41 @@ async function scanPorts(ip, ports, onProgress) {
   return open;
 }
 
-async function scanIPFull(ip) {
+// ── Log em tempo real no Telegram ────────────────────────────────────────────
+const logBuffer = new Map(); // chatId -> { lines[], timer }
+
+async function logToTelegram(chatId, line) {
+  console.log(line);
+  if (!chatId) return;
+
+  if (!logBuffer.has(chatId)) {
+    logBuffer.set(chatId, { lines: [], timer: null });
+  }
+
+  const buf = logBuffer.get(chatId);
+  buf.lines.push(line);
+
+  // Envia a cada 10 linhas ou após 3s de silêncio
+  if (buf.lines.length >= 10) {
+    clearTimeout(buf.timer);
+    await flushLog(chatId);
+  } else {
+    clearTimeout(buf.timer);
+    buf.timer = setTimeout(() => flushLog(chatId), 3000);
+  }
+}
+
+async function flushLog(chatId) {
+  const buf = logBuffer.get(chatId);
+  if (!buf || buf.lines.length === 0) return;
+  const msg = buf.lines.join('\n');
+  buf.lines = [];
+  try {
+    await bot.telegram.sendMessage(chatId, '```\n' + msg + '\n```', { parse_mode: 'Markdown' });
+  } catch (_) {}
+}
+
+async function scanIPFull(ip, chatId = null) {
   const allPorts = [];
   for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) allPorts.push(p);
   const openPorts = await scanPorts(ip, allPorts, null);
@@ -203,7 +237,7 @@ async function scanIPFull(ip) {
     if (!endpoint) return null;
     const quality = endpoint.includes('.ts') ? 'FHD' : 'HD';
     const name = getChannelName(idx);
-    console.log(`[${quality}] -> ${name} (Porta: ${port})`);
+    await logToTelegram(chatId, `[${quality}] -> ${name} (Porta: ${port})`);
     return { url: `http://${ip}:${port}${endpoint}` };
   }));
   return results.filter(Boolean);
@@ -432,7 +466,7 @@ bot.command('buscar', async ctx => {
     let ipsWithStreams = 0;
 
     for (const ip of ips) {
-      const channels = await scanIPFull(ip);
+      const channels = await scanIPFull(ip, chatId);
       ipsScanned++;
       if (channels.length > 0) {
         ipsWithStreams++;
@@ -550,7 +584,7 @@ bot.on('text', async ctx => {
             if (!endpoint) return null;
             const quality = endpoint.includes('.ts') ? 'FHD' : 'HD';
             const name = getChannelName(idx);
-            console.log(`[${quality}] -> ${name} (Porta: ${port})`);
+            await logToTelegram(chatId, `[${quality}] -> ${name} (Porta: ${port})`);
             return { url: `http://${entry}:${port}${endpoint}` };
           }));
           const channels = streamResults.filter(Boolean);
@@ -558,7 +592,7 @@ bot.on('text', async ctx => {
         }
       } else {
         for (const ip of ips) {
-          const channels = await scanIPFull(ip);
+          const channels = await scanIPFull(ip, chatId);
           if (channels.length > 0) { totalWithStreams++; allChannels.push(...channels); }
         }
       }
