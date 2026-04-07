@@ -1,6 +1,6 @@
-#EXTM3U url-tvg="" tvg-shift=0 cache=500
+#EXTM3U
 # Servidor: OVH
-# Scan: 07/04/2026, 00:44:42
+# Data: 07/04/2026, 00:52:37
 
-#EXTINF:-1 tvg-id="ESPN" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="OVH",[FHD] ESPN 1
-http://15.235.115.89:14018/stream
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",[FHD] ESPN 1
+http://15.235.115.89:14018/live.ts
