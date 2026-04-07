@@ -1,0 +1,8 @@
+#EXTM3U url-tvg="" tvg-shift=0 cache=500
+# Servidor: http://147.135.68.83
+# Scan: 07/04/2026, 19:21:17
+
+#EXTINF:-1 tvg-id="ESPN" tvg-name="ESPN" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="http://147.135.68.83",[FHD] ESPN 1
+http://147.135.68.83:14027/live.ts
+#EXTINF:-1 tvg-id="GLOBO" tvg-name="GLOBO" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="http://147.135.68.83",[FHD] GLOBO 2
+http://147.135.68.83:14962/live.ts
