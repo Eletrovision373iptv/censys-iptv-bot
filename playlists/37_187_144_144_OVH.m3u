@@ -1,0 +1,24 @@
+#EXTM3U url-tvg="" tvg-shift=0 cache=500
+# Servidor: 37.187.144.144-ovh
+# Scan: 07/04/2026, 19:28:52
+
+#EXTINF:-1 tvg-id="ESPN" tvg-name="ESPN" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] ESPN 1
+http://37.187.144.144:14201/stream.ts
+#EXTINF:-1 tvg-id="GLOBO" tvg-name="GLOBO" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] GLOBO 2
+http://37.187.144.144:14202/stream
+#EXTINF:-1 tvg-id="RECORD" tvg-name="RECORD" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] RECORD 3
+http://37.187.144.144:14205/stream
+#EXTINF:-1 tvg-id="SBT" tvg-name="SBT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] SBT 4
+http://37.187.144.144:14206/stream
+#EXTINF:-1 tvg-id="SPORTV" tvg-name="SPORTV" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] SPORTV 5
+http://37.187.144.144:14301/stream
+#EXTINF:-1 tvg-id="PREMIERE" tvg-name="PREMIERE" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] PREMIERE 6
+http://37.187.144.144:14302/stream
+#EXTINF:-1 tvg-id="BAND" tvg-name="BAND" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] BAND 7
+http://37.187.144.144:14305/stream
+#EXTINF:-1 tvg-id="DISCOVERY" tvg-name="DISCOVERY" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] DISCOVERY 8
+http://37.187.144.144:14306/stream
+#EXTINF:-1 tvg-id="CNN BRASIL" tvg-name="CNN BRASIL" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] CNN BRASIL 9
+http://37.187.144.144:14307/stream
+#EXTINF:-1 tvg-id="GNT" tvg-name="GNT" tvg-logo="https://i.imgur.com/dPaFa7x.png" group-title="37.187.144.144-ovh",[FHD] GNT 10
+http://37.187.144.144:14308/stream
