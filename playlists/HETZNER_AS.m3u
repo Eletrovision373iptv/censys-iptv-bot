@@ -1,0 +1,4 @@
+#EXTM3U
+# Servidor: HETZNER-AS
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",[FHD] ESPN 1
+http://91.98.238.172:15173/live.ts
