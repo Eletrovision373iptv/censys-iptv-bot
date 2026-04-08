@@ -3,7 +3,6 @@ const net = require('net');
 const http = require('http');
 const https = require('https');
 
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
 const BOT_TOKEN    = process.env.BOT_TOKEN;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_USER  = 'Eletrovision373iptv';
@@ -18,13 +17,11 @@ const STREAM_ENDPOINTS = ['/live.ts', '/stream', '/live', '/index.m3u8'];
 const LOGO_URL = 'https://i.imgur.com/dPaFa7x.png';
 const CHANNEL_NAMES = ['ESPN','GLOBO','RECORD','SBT','SPORTV','PREMIERE','BAND','HBO','TELECINE','MULTISHOW','GNT','TNT'];
 
-const waitingForName = new Map(); 
 const bot = new Telegraf(BOT_TOKEN);
-
 http.createServer((req, res) => { res.end('OK'); }).listen(process.env.PORT || 3000);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-// ── Funções de Rede ──────────────────────────────────────────────────────────
+// ── Funções de Rede e GitHub ─────────────────────────────────────────────────
 
 function checkPort(ip, port) {
   return new Promise(resolve => {
@@ -90,57 +87,24 @@ async function saveToGitHub(path, content) {
   });
 }
 
-// ── Handler Principal ───────────────────────────────────────────────────────
+// ── Lógica do Scanner ────────────────────────────────────────────────────────
 
 bot.on('text', async ctx => {
-  const input = ctx.message.text.trim();
+  const lines = ctx.message.text.split('\n').map(l => l.trim()).filter(l => l !== "");
+  if (lines.length < 2) return ctx.reply("⚠️ Formato: \n1ª linha: Nome do Servidor\nResto: Lista de IPs");
+
+  const serverName = lines[0];
+  const ips = lines.slice(1).filter(i => /^\d/.test(i));
   const chatId = ctx.chat.id;
 
-  // SALVAR COM NOME DO SERVIDOR
-  if (waitingForName.has(chatId)) {
-    const data = waitingForName.get(chatId);
-    waitingForName.delete(chatId);
-    
-    const serverName = input || 'Servidor';
-    const baseName = serverName.replace(/\s+/g, '_');
+  if (ips.length === 0) return ctx.reply("❌ Nenhum IP válido encontrado abaixo do nome.");
 
-    let m3u = `#EXTM3U\n# Servidor: ${serverName}\n`;
-    let txt = `LISTA DE CANAIS - ${serverName}\n\n`;
-    let preview = `🛰 *${serverName}*\n\n*--- PRÉVIA ---*\n\`\`\`\n`;
-
-    data.channels.forEach((ch, i) => {
-      const name = `${CHANNEL_NAMES[i % CHANNEL_NAMES.length]} ${i+1}`;
-      m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",[FHD] ${name}\n${ch.url}\n`;
-      txt += `[FHD] ${name} -> ${ch.url}\n`;
-      if (i < 20) preview += `[FHD] ${name}\n${ch.url}\n`;
-    });
-
-    if (data.channels.length > 20) preview += `\n... (+ ${data.channels.length - 20} canais)`;
-    preview += `\n\`\`\``;
-
-    await ctx.reply(preview, { parse_mode: 'Markdown' });
-    await ctx.reply('📦 Enviando arquivos (M3U e TXT) e salvando no GitHub...');
-    
-    // Salva no GitHub (Playlist)
-    const gitUrl = await saveToGitHub(`playlists/${baseName}.m3u`, m3u);
-    
-    // Envia arquivos para o Telegram
-    await ctx.replyWithDocument({ source: Buffer.from(m3u), filename: `${baseName}.m3u` });
-    await ctx.replyWithDocument({ source: Buffer.from(txt), filename: `${baseName}.txt` });
-    
-    if (gitUrl) await ctx.reply(`✅ *GitHub:* \`${gitUrl}\``, { parse_mode: 'Markdown' });
-    return;
-  }
-
-  const ips = input.split('\n').map(i => i.trim()).filter(i => /^\d/.test(i));
-  if (ips.length === 0) return;
-
-  const msg = await ctx.reply(`🔎 Iniciando scan em ${ips.length} IPs...`);
+  const statusMsg = await ctx.reply(`🛰 *Servidor:* ${serverName}\n🔎 Escaneando ${ips.length} IPs...`, { parse_mode: 'Markdown' });
   const allChannels = [];
-  let summary = "📊 *Resumo do Scan:*\n";
+  let summary = `📊 *Resumo: ${serverName}*\n`;
 
   for (const ip of ips) {
-    let ipChannelsCount = 0;
+    let ipCount = 0;
     const ports = Array.from({length: (PORT_RANGE_END - PORT_RANGE_START + 1)}, (_, i) => PORT_RANGE_START + i);
 
     for (let i = 0; i < ports.length; i += MAX_CONCURRENT) {
@@ -152,26 +116,47 @@ bot.on('text', async ctx => {
           const endpoint = await checkStream(ip, chunk[j]);
           if (endpoint) {
             allChannels.push({ url: `http://${ip}:${chunk[j]}${endpoint}` });
-            ipChannelsCount++;
+            ipCount++;
           }
         }
       }
 
-      if (i % 240 === 0) {
+      if (i % 300 === 0) {
         try {
-          await bot.telegram.editMessageText(chatId, msg.message_id, null, 
-            `⏳ Analisando IP: \`${ip}\`\n🔍 Portas: ${i}/${ports.length}\n📺 Canais neste IP: ${ipChannelsCount}\n✨ Total Acumulado: ${allChannels.length}`, { parse_mode: 'Markdown' });
-          await sleep(60); 
+          await bot.telegram.editMessageText(chatId, statusMsg.message_id, null, 
+            `⏳ Analisando: \`${ip}\`\n🔍 Portas: ${i}/${ports.length}\n📺 Canais no IP: ${ipCount}\n✨ Total: ${allChannels.length}`, { parse_mode: 'Markdown' });
         } catch(e) {}
       }
     }
-    summary += `🔹 ${ip}: ${ipChannelsCount} canais\n`;
+    summary += `🔹 ${ip}: ${ipCount} canais\n`;
+    await sleep(100); // Pausa para o Termux respirar entre IPs
   }
 
-  if (allChannels.length === 0) return ctx.reply('❌ Nenhum canal encontrado nos IPs enviados.');
+  if (allChannels.length === 0) return ctx.reply('❌ Nenhum canal encontrado.');
 
-  await ctx.reply(summary + `\nTotal Geral: ${allChannels.length}\n\n📝 *Qual o nome do servidor?*`, { parse_mode: 'Markdown' });
-  waitingForName.set(chatId, { channels: allChannels });
+  // GERAR ARQUIVOS E SALVAR
+  const baseName = serverName.replace(/\s+/g, '_');
+  let m3u = `#EXTM3U\n# Servidor: ${serverName}\n`;
+  let txt = `LISTA: ${serverName}\n\n`;
+  let preview = `✅ *Scan Concluído!*\n${summary}\n*--- PRÉVIA ---*\n\`\`\`\n`;
+
+  allChannels.forEach((ch, i) => {
+    const name = `${CHANNEL_NAMES[i % CHANNEL_NAMES.length]} ${i+1}`;
+    m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",[FHD] ${name}\n${ch.url}\n`;
+    txt += `[FHD] ${name} -> ${ch.url}\n`;
+    if (i < 20) preview += `[FHD] ${name}\n${ch.url}\n`;
+  });
+
+  if (allChannels.length > 20) preview += `\n... (+ ${allChannels.length - 20} canais)`;
+  preview += `\n\`\`\``;
+
+  await ctx.reply(preview, { parse_mode: 'Markdown' });
+  
+  const gitUrl = await saveToGitHub(`playlists/${baseName}.m3u`, m3u);
+  await ctx.replyWithDocument({ source: Buffer.from(m3u), filename: `${baseName}.m3u` });
+  await ctx.replyWithDocument({ source: Buffer.from(txt), filename: `${baseName}.txt` });
+
+  if (gitUrl) ctx.reply(`🔗 *GitHub:* \`${gitUrl}\``, { parse_mode: 'Markdown' });
 });
 
 bot.launch();
