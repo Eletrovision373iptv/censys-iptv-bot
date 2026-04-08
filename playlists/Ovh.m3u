@@ -1,0 +1,4 @@
+#EXTM3U
+# Servidor: Ovh
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",[FHD] ESPN 1
+http://147.135.210.213:14060/live.ts
