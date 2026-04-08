@@ -10,30 +10,20 @@ const GITHUB_USER  = 'Eletrovision373iptv';
 const GITHUB_REPO  = 'censys-iptv-bot';
 const GITHUB_BRANCH = 'main';
 
-if (!BOT_TOKEN) throw new Error('BOT_TOKEN não definido!');
-
 const PORT = process.env.PORT || 3000;
 const PORT_RANGE_START = 14000;
 const PORT_RANGE_END   = 17000;
-const CONNECT_TIMEOUT  = 800;
-const HTTP_TIMEOUT     = 2000;
-const MAX_CONCURRENT   = 60; // Ajustado para estabilidade no Termux
+const CONNECT_TIMEOUT  = 600; 
+const MAX_CONCURRENT   = 50; 
 
-const STREAM_ENDPOINTS = ['/live.ts', '/stream', '/live', '/video.ts', '/index.m3u8'];
+const STREAM_ENDPOINTS = ['/live.ts', '/stream', '/live', '/index.m3u8'];
 const LOGO_URL = 'https://i.imgur.com/dPaFa7x.png';
+const CHANNEL_NAMES = ['ESPN','GLOBO','RECORD','SBT','SPORTV','PREMIERE','BAND','HBO','TELECINE','TNT'];
 
-const CHANNEL_NAMES = [
-  'ESPN','GLOBO','RECORD','SBT','SPORTV','PREMIERE','BAND','DISCOVERY',
-  'HBO','TELECINE','MULTISHOW','GNT','TNT','HBO 2','HBO FAMILY'
-];
-
-const waitingForName = new Map(); 
 const bot = new Telegraf(BOT_TOKEN);
+http.createServer((req, res) => { res.end('OK'); }).listen(PORT);
 
-// Keep-alive
-http.createServer((req, res) => { res.end('Bot Online'); }).listen(PORT);
-
-// ── Funções de Rede ──────────────────────────────────────────────────────────
+// ── Funções de Apoio ─────────────────────────────────────────────────────────
 
 function checkPort(ip, port) {
   return new Promise(resolve => {
@@ -50,7 +40,7 @@ function checkPort(ip, port) {
 async function checkStream(ip, port) {
   for (const p of STREAM_ENDPOINTS) {
     const found = await new Promise((resolve) => {
-      const req = http.get({ host: ip, port, path: p, timeout: 1200 }, res => {
+      const req = http.get({ host: ip, port, path: p, timeout: 1000 }, res => {
         res.destroy();
         resolve(res.statusCode < 400 ? p : null);
       });
@@ -61,8 +51,6 @@ async function checkStream(ip, port) {
   }
   return null;
 }
-
-// ── Funções de Playlist ──────────────────────────────────────────────────────
 
 async function saveToGitHub(filename, content) {
   if (!GITHUB_TOKEN) return null;
@@ -84,46 +72,26 @@ async function saveToGitHub(filename, content) {
   });
 }
 
-// ── Handler Principal ───────────────────────────────────────────────────────
+// ── Lógica Principal ────────────────────────────────────────────────────────
 
 bot.on('text', async ctx => {
-  const input = ctx.message.text.trim();
+  const lines = ctx.message.text.trim().split('\n').map(l => l.trim());
   const chatId = ctx.chat.id;
 
-  if (waitingForName.has(chatId)) {
-    const data = waitingForName.get(chatId);
-    waitingForName.delete(chatId);
-    
-    const serverName = input || 'Servidor';
-    const filename = `${serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase()}.m3u`;
+  // Se a primeira linha NÃO começar com número, é o NOME do servidor
+  let serverName = "SERVIDOR_IPTV";
+  let ips = [];
 
-    let m3u = `#EXTM3U\n# Servidor: ${serverName}\n`;
-    let preview = `<b>🛰 ${serverName}</b>\n\n<b>--- PRÉVIA ---</b>\n<pre>\n`;
-
-    data.channels.forEach((ch, i) => {
-      const name = CHANNEL_NAMES[i % CHANNEL_NAMES.length];
-      m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",[FHD] ${name} ${i+1}\n${ch.url}\n`;
-      if (i < 20) preview += `[FHD] ${name} ${i+1}\n${ch.url}\n`;
-    });
-
-    if (data.channels.length > 20) preview += `\n... (+ ${data.channels.length - 20} canais)`;
-    preview += `\n</pre>`;
-
-    await ctx.reply(preview, { parse_mode: 'HTML' });
-    
-    const [githubUrl] = await Promise.all([
-      saveToGitHub(filename, m3u),
-      ctx.replyWithDocument({ source: Buffer.from(m3u), filename })
-    ]);
-
-    if(githubUrl) ctx.reply(`✅ <b>Playlist no GitHub:</b>\n<code>${githubUrl}</code>`, { parse_mode: 'HTML' });
-    return;
+  if (!/^\d/.test(lines[0])) {
+    serverName = lines[0];
+    ips = lines.slice(1).filter(l => /^\d/.test(l));
+  } else {
+    ips = lines.filter(l => /^\d/.test(l));
   }
 
-  const ips = input.split('\n').map(i => i.trim()).filter(i => /^\d/.test(i));
   if (ips.length === 0) return;
 
-  const msg = await ctx.reply(`🔎 Iniciando scan em ${ips.length} IP(s)...`);
+  const msg = await ctx.reply(`🔎 <b>Servidor:</b> ${serverName}\nIniciando scan em ${ips.length} IP(s)...`, { parse_mode: 'HTML' });
   const allChannels = [];
 
   for (const ip of ips) {
@@ -140,10 +108,10 @@ bot.on('text', async ctx => {
         }
       }
 
-      if (i % 300 === 0) {
+      if (i % 400 === 0) {
         try {
           await bot.telegram.editMessageText(chatId, msg.message_id, null, 
-            `⏳ <b>IP:</b> ${ip}\n🔍 <b>Portas:</b> ${i}/3000\n📺 <b>Canais:</b> ${allChannels.length}`, { parse_mode: 'HTML' });
+            `🛰 <b>Servidor:</b> ${serverName}\n⏳ <b>IP:</b> ${ip}\n🔍 <b>Portas:</b> ${i}/3000\n📺 <b>Canais:</b> ${allChannels.length}`, { parse_mode: 'HTML' });
         } catch(e) {}
       }
     }
@@ -151,9 +119,28 @@ bot.on('text', async ctx => {
 
   if (allChannels.length === 0) return ctx.reply('❌ Nenhum canal ativo.');
 
-  await ctx.reply(`✅ <b>Scan Finalizado!</b>\n📺 Total: ${allChannels.length}\n\n📝 <b>Qual o nome do servidor?</b>`, { parse_mode: 'HTML' });
-  waitingForName.set(chatId, { channels: allChannels });
+  // Finalização e envio automático (sem perguntar nada)
+  const filename = `${serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase()}.m3u`;
+  let m3u = `#EXTM3U\n# Servidor: ${serverName}\n`;
+  let preview = `<b>✅ SCAN FINALIZADO</b>\n<b>🛰 ${serverName}</b>\n\n<b>--- PRÉVIA ---</b>\n<pre>\n`;
+
+  allChannels.forEach((ch, i) => {
+    const name = CHANNEL_NAMES[i % CHANNEL_NAMES.length];
+    m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",[FHD] ${name} ${i+1}\n${ch.url}\n`;
+    if (i < 15) preview += `[FHD] ${name} ${i+1}\n${ch.url}\n`;
+  });
+
+  if (allChannels.length > 15) preview += `\n... (+ ${allChannels.length - 15} canais)`;
+  preview += `\n</pre>`;
+
+  await ctx.reply(preview, { parse_mode: 'HTML' });
+  
+  const [githubUrl] = await Promise.all([
+    saveToGitHub(filename, m3u),
+    ctx.replyWithDocument({ source: Buffer.from(m3u), filename })
+  ]);
+
+  if(githubUrl) ctx.reply(`🔗 <b>GitHub:</b> <code>${githubUrl}</code>`, { parse_mode: 'HTML' });
 });
 
 bot.launch();
-console.log('🤖 Bot IPTV Manual (Sem ZoomEye) Online!');
