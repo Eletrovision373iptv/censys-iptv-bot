@@ -18,7 +18,7 @@ const MAX_CONCURRENT   = 50;
 
 const STREAM_ENDPOINTS = ['/live.ts', '/stream', '/live', '/index.m3u8'];
 const LOGO_URL = 'https://i.imgur.com/dPaFa7x.png';
-const CHANNEL_NAMES = ['ESPN','GLOBO','RECORD','SBT','SPORTV','PREMIERE','BAND','HBO','TELECINE','TNT'];
+const CHANNEL_NAMES = ['ESPN','GLOBO','RECORD','SBT','SPORTV','PREMIERE','BAND','HBO','TELECINE','TNT','MULTISHOW','GNT'];
 
 const bot = new Telegraf(BOT_TOKEN);
 http.createServer((req, res) => { res.end('OK'); }).listen(PORT);
@@ -78,7 +78,6 @@ bot.on('text', async ctx => {
   const lines = ctx.message.text.trim().split('\n').map(l => l.trim());
   const chatId = ctx.chat.id;
 
-  // Se a primeira linha NÃO começar com número, é o NOME do servidor
   let serverName = "SERVIDOR_IPTV";
   let ips = [];
 
@@ -91,7 +90,7 @@ bot.on('text', async ctx => {
 
   if (ips.length === 0) return;
 
-  const msg = await ctx.reply(`🔎 <b>Servidor:</b> ${serverName}\nIniciando scan em ${ips.length} IP(s)...`, { parse_mode: 'HTML' });
+  const msg = await ctx.reply(`🛰 <b>Servidor:</b> ${serverName}\nIniciando scan em ${ips.length} IP(s)...`, { parse_mode: 'HTML' });
   const allChannels = [];
 
   for (const ip of ips) {
@@ -119,14 +118,18 @@ bot.on('text', async ctx => {
 
   if (allChannels.length === 0) return ctx.reply('❌ Nenhum canal ativo.');
 
-  // Finalização e envio automático (sem perguntar nada)
-  const filename = `${serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase()}.m3u`;
+  const safeName = serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase();
+  const filenameM3U = `${safeName}.m3u`;
+  const filenameTXT = `${safeName}.txt`;
+
   let m3u = `#EXTM3U\n# Servidor: ${serverName}\n`;
+  let txt = `SERVIDOR: ${serverName}\nTOTAL: ${allChannels.length}\n\n`;
   let preview = `<b>✅ SCAN FINALIZADO</b>\n<b>🛰 ${serverName}</b>\n\n<b>--- PRÉVIA ---</b>\n<pre>\n`;
 
   allChannels.forEach((ch, i) => {
     const name = CHANNEL_NAMES[i % CHANNEL_NAMES.length];
     m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",[FHD] ${name} ${i+1}\n${ch.url}\n`;
+    txt += `${ch.url}\n`;
     if (i < 15) preview += `[FHD] ${name} ${i+1}\n${ch.url}\n`;
   });
 
@@ -136,8 +139,9 @@ bot.on('text', async ctx => {
   await ctx.reply(preview, { parse_mode: 'HTML' });
   
   const [githubUrl] = await Promise.all([
-    saveToGitHub(filename, m3u),
-    ctx.replyWithDocument({ source: Buffer.from(m3u), filename })
+    saveToGitHub(filenameM3U, m3u),
+    ctx.replyWithDocument({ source: Buffer.from(m3u), filename: filenameM3U }),
+    ctx.replyWithDocument({ source: Buffer.from(txt), filename: filenameTXT })
   ]);
 
   if(githubUrl) ctx.reply(`🔗 <b>GitHub:</b> <code>${githubUrl}</code>`, { parse_mode: 'HTML' });
