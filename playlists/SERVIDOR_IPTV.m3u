@@ -1,0 +1,6 @@
+#EXTM3U
+# Servidor: SERVIDOR_IPTV
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",[FHD] ESPN 1
+http://147.135.68.83:14027/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",[FHD] GLOBO 2
+http://147.135.68.83:14962/stream
