@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// ─── CONFIGURAÇÃO (Lê do .env) ───────────────────────────────────────────────
+// ─── CONFIG (lê do arquivo .env) ─────────────────────────────────────────────
 try {
   const env = fs.readFileSync(path.join(__dirname, '.env'), 'utf-8');
   env.split('\n').forEach(line => {
@@ -19,67 +19,97 @@ try {
 const BOT_TOKEN      = process.env.BOT_TOKEN;
 const VISION_API_KEY = process.env.VISION_API_KEY;
 const GITHUB_TOKEN   = process.env.GITHUB_TOKEN;
-const GITHUB_USER    = process.env.GITHUB_USER;
-const GITHUB_REPO    = process.env.GITHUB_REPO;
+const GITHUB_USER    = process.env.GITHUB_USER  || 'Eletrovision373iptv';
+const GITHUB_REPO    = process.env.GITHUB_REPO  || 'censys-iptv-bot';
+const GITHUB_BRANCH  = 'main';
+
+if (!BOT_TOKEN)      throw new Error('BOT_TOKEN não definido!');
+if (!VISION_API_KEY) throw new Error('VISION_API_KEY não definida!');
 
 const PORT_RANGE_START = 14000;
 const PORT_RANGE_END   = 17000;
-const MAX_CONCURRENT   = 40; 
+const CONNECT_TIMEOUT  = 800;
+const HTTP_TIMEOUT     = 2000;
+const MAX_CONCURRENT   = 80;
+
+const STREAM_ENDPOINTS = ['/live.ts', '/stream', '/stream.ts', '/live', '/video.ts', '/index.m3u8'];
 const LOGO_URL = 'https://i.imgur.com/dPaFa7x.png';
+
+const CHANNEL_NAMES = [
+  'ESPN','GLOBO','RECORD','SBT','SPORTV','PREMIERE','BAND','DISCOVERY',
+  'CNN BRASIL','GNT','MULTISHOW','TNT','HBO','TELECINE','MEGAPIX',
+  'COMBATE','PARAMOUNT','UNIVERSAL','SyFy','AXN','FOX','FX','SPACE',
+  'HISTORY','NATIONAL GEOGRAPHIC','ANIMAL PLANET','DISCOVERY SCIENCE',
+  'CARTOON NETWORK','DISNEY CHANNEL','NICKELODEON','COMEDY CENTRAL',
+  'VH1','MTV','BIS','VIVA','TV CULTURA','TV BRASIL','REDE TV',
+  'GAZETA','JOVEM PAN NEWS','RECORD NEWS','GLOBONEWS','BAND NEWS'
+];
 
 const bot = new Telegraf(BOT_TOKEN);
 
-// ── Google Vision & FFmpeg ───────────────────────────────────────────────────
+// ── Google Vision API ─────────────────────────────────────────────────────────
 function captureFrame(url) {
   const tmpFile = path.join(os.tmpdir(), `frame_${Date.now()}.png`);
   try {
-    spawnSync('ffmpeg', [
-      '-y', '-timeout', '5000000', '-i', url,
-      '-vframes', '1', '-ss', '00:00:02', '-vf', 'scale=320:180',
-      '-f', 'image2', tmpFile
-    ], { timeout: 10000 });
+    spawnSync('ffmpeg', ['-y', '-i', url, '-vframes', '1', '-ss', '00:00:03', '-vf', 'scale=320:180', '-f', 'image2', tmpFile], { timeout: 15000 });
     return fs.existsSync(tmpFile) ? tmpFile : null;
   } catch (_) { return null; }
 }
 
-async function analyzeFrame(imagePath) {
+function analyzeFrame(imagePath) {
   return new Promise(resolve => {
     try {
       const base64 = fs.readFileSync(imagePath).toString('base64');
       const body = JSON.stringify({
-        requests: [{
-          image: { content: base64 },
-          features: [{ type: 'LOGO_DETECTION', maxResults: 1 }, { type: 'TEXT_DETECTION', maxResults: 1 }]
-        }]
+        requests: [{ image: { content: base64 }, features: [{ type: 'LOGO_DETECTION', maxResults: 3 }, { type: 'TEXT_DETECTION', maxResults: 5 }] }]
       });
-      const options = {
-        hostname: 'vision.googleapis.com',
-        path: `/v1/images:annotate?key=${VISION_API_KEY}`,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      };
+      const options = { hostname: 'vision.googleapis.com', path: `/v1/images:annotate?key=${VISION_API_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } };
       const req = https.request(options, res => {
         let d = ''; res.on('data', c => d += c);
         res.on('end', () => {
           try {
             const json = JSON.parse(d);
-            const logo = json.responses[0]?.logoAnnotations?.[0]?.description;
-            const text = json.responses[0]?.textAnnotations?.[0]?.description?.split('\n')[0];
-            resolve(logo || text || null);
+            const resp = json.responses?.[0];
+            const logos = resp?.logoAnnotations || [];
+            if (logos.length > 0) return resolve(logos[0].description.toUpperCase());
+            const texts = resp?.textAnnotations || [];
+            if (texts.length > 0) resolve(texts[0].description.split('\n')[0].trim().toUpperCase());
+            else resolve(null);
           } catch (_) { resolve(null); }
         });
       });
-      req.on('error', () => resolve(null));
-      req.write(body); req.end();
+      req.on('error', () => resolve(null)); req.write(body); req.end();
     } catch (_) { resolve(null); }
   });
 }
 
-// ── Funções de Rede ──────────────────────────────────────────────────────────
+async function detectChannelName(url) {
+  const framePath = captureFrame(url);
+  if (!framePath) return null;
+  try { return await analyzeFrame(framePath); } finally { try { fs.unlinkSync(framePath); } catch (_) {} }
+}
+
+// ── GitHub ────────────────────────────────────────────────────────────────────
+async function saveToGitHub(filename, content) {
+  if (!GITHUB_TOKEN) return null;
+  const filePath = `playlists/${filename}`;
+  const base64 = Buffer.from(content, 'utf-8').toString('base64');
+  const body = JSON.stringify({ message: `Atualizar ${filename}`, content: base64, branch: GITHUB_BRANCH });
+  return new Promise(resolve => {
+    const req = https.request({
+      hostname: 'api.github.com', path: `/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${filePath}`,
+      method: 'PUT', headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'User-Agent': 'iptv-bot', 'Content-Type': 'application/json' }
+    }, res => resolve(res.statusCode <= 201 ? `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}` : null));
+    req.on('error', () => resolve(null)); req.write(body); req.end();
+  });
+}
+
+// ── Scanner ───────────────────────────────────────────────────────────────────
+function isValidIP(ip) { return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip); }
 function checkPort(ip, port) {
   return new Promise(resolve => {
     const sock = new net.Socket();
-    sock.setTimeout(450);
+    sock.setTimeout(CONNECT_TIMEOUT);
     sock.on('connect', () => { sock.destroy(); resolve(true); });
     sock.on('error', () => { sock.destroy(); resolve(false); });
     sock.on('timeout', () => { sock.destroy(); resolve(false); });
@@ -88,12 +118,9 @@ function checkPort(ip, port) {
 }
 
 async function checkStream(ip, port) {
-  const endpoints = ['/live.ts', '/stream', '/live'];
-  for (const p of endpoints) {
+  for (const p of STREAM_ENDPOINTS) {
     const ok = await new Promise(r => {
-      const req = http.get({ host: ip, port, path: p, timeout: 1500 }, res => {
-        res.destroy(); r(res.statusCode < 400);
-      });
+      const req = http.get({ host: ip, port, path: p, timeout: HTTP_TIMEOUT }, res => { res.destroy(); r(res.statusCode < 500); });
       req.on('error', () => r(false));
     });
     if (ok) return p;
@@ -101,100 +128,65 @@ async function checkStream(ip, port) {
   return null;
 }
 
-async function saveToGitHub(filename, content) {
-  if (!GITHUB_TOKEN) return null;
-  const pathFile = `playlists/${filename}`;
-  const base64 = Buffer.from(content, 'utf-8').toString('base64');
-  const body = JSON.stringify({ message: `Update ${filename}`, content: base64 });
-  const opt = {
-    hostname: 'api.github.com', path: `/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${pathFile}`,
-    method: 'PUT', headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'User-Agent': 'iptv-bot', 'Content-Type': 'application/json' }
-  };
-  return new Promise(resolve => {
-    const req = https.request(opt, res => resolve(res.statusCode <= 201 ? `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${pathFile}` : null));
-    req.on('error', () => resolve(null)); req.write(body); req.end();
-  });
+// ── Log em tempo real ─────────────────────────────────────────────────────────
+async function logToTelegram(chatId, line) {
+  console.log(line);
+  try { await bot.telegram.sendMessage(chatId, '`' + line + '`', { parse_mode: 'Markdown' }); } catch (_) {}
 }
 
-// ── Handler de Mensagens ─────────────────────────────────────────────────────
+// ── Bot Handler ───────────────────────────────────────────────────────────────
 bot.on('text', async ctx => {
   const lines = ctx.message.text.trim().split('\n').map(l => l.trim());
-  let serverName = !/^\d/.test(lines[0]) ? lines[0] : "SERVIDOR_IPTV";
-  let ips = lines.filter(l => /^(\d{1,3}\.){3}\d{1,3}/.test(l));
-
+  let serverName = !isValidIP(lines[0]) ? lines[0] : "SERVIDOR";
+  let ips = lines.filter(l => isValidIP(l));
   if (ips.length === 0) return;
 
-  const status = await ctx.reply(`🛰 <b>${serverName}</b>\n🔎 Preparando scan...`, { parse_mode: 'HTML' });
-  const results = [];
+  const status = await ctx.reply(`🛰 *${serverName}*\n🔍 Iniciando scan...`, { parse_mode: 'Markdown' });
+  const allChannels = [];
 
   try {
-    for (let ipIdx = 0; ipIdx < ips.length; ipIdx++) {
-      const ip = ips[ipIdx];
-      const ports = Array.from({length: (PORT_RANGE_END - PORT_RANGE_START + 1)}, (_, i) => PORT_RANGE_START + i);
-
-      for (let i = 0; i < ports.length; i += MAX_CONCURRENT) {
-        const chunk = ports.slice(i, i + MAX_CONCURRENT);
-        const open = await Promise.all(chunk.map(p => checkPort(ip, p)));
-        
-        for (let j = 0; j < chunk.length; j++) {
-          if (open[j]) {
-            const pathUrl = await checkStream(ip, chunk[j]);
-            if (pathUrl) {
-              const url = `http://${ip}:${chunk[j]}${pathUrl}`;
-              const frame = captureFrame(url);
-              const name = frame ? (await analyzeFrame(frame)) : null;
-              if (frame && fs.existsSync(frame)) fs.unlinkSync(frame);
-              results.push({ url, name: (name || `CANAL ${results.length + 1}`).toUpperCase() });
+    for (const ip of ips) {
+      await bot.telegram.editMessageText(ctx.chat.id, status.message_id, undefined, `🛰 *${serverName}*\n🔍 Varrendo: ${ip}`);
+      for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p += MAX_CONCURRENT) {
+        const chunk = Array.from({length: Math.min(MAX_CONCURRENT, PORT_RANGE_END - p + 1)}, (_, i) => p + i);
+        const open = await Promise.all(chunk.map(port => checkPort(ip, port)));
+        for (let i = 0; i < chunk.length; i++) {
+          if (open[i]) {
+            const endpoint = await checkStream(ip, chunk[i]);
+            if (endpoint) {
+              const url = `http://${ip}:${chunk[i]}${endpoint}`;
+              const name = (await detectChannelName(url)) || CHANNEL_NAMES[allChannels.length % CHANNEL_NAMES.length];
+              allChannels.push({ name, url });
+              await logToTelegram(ctx.chat.id, `[ACHADO] -> ${name}`);
             }
           }
-        }
-
-        // Atualização visual constante (feedback de que não travou)
-        if (i % 160 === 0) {
-          await ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, 
-            `🛰 <b>${serverName}</b>\n🌐 IP: <code>${ip}</code> (${ipIdx + 1}/${ips.length})\n🔍 Portas: ${i}/${ports.length}\n📺 Canais: <b>${results.length}</b>`, 
-            { parse_mode: 'HTML' }).catch(() => {});
         }
       }
     }
 
-    if (results.length === 0) return ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, "❌ Nenhum canal encontrado.");
+    if (allChannels.length === 0) return ctx.reply("❌ Nada encontrado.");
 
+    // ── GERAÇÃO FINAL (AQUI MUDA A PRÉVIA) ────────────────────────────────────
     const safe = serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase();
     let m3u = `#EXTM3U\n`;
-    let txt = `SERVER: ${serverName}\nTOTAL: ${results.length}\n\n`;
-    let preview = `<b>✅ FINALIZADO: ${serverName}</b>\n<pre>`;
+    let txt = `SERVER: ${serverName}\n\n`;
+    let preview = `✅ *${serverName} - FINALIZADO*\n\n`;
 
-    results.forEach((res, i) => {
-      m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",${res.name}\n${res.url}\n`;
-      txt += `${res.url}\n`;
-      if (i < 20) preview += `${res.name}\n`;
+    allChannels.forEach((ch, i) => {
+      m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",${ch.name}\n${ch.url}\n`;
+      txt += `${ch.url}\n`;
+      if (i < 20) preview += `📺 ${ch.name}\n`; // Limite de 20 linhas na prévia
     });
 
-    if (results.length > 20) preview += `\n... + ${results.length - 20} canais`;
-    preview += `</pre>`;
+    if (allChannels.length > 20) preview += `\n... e mais ${allChannels.length - 20} canais.`;
 
-    await ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, preview, { parse_mode: 'HTML' });
-    
-    // Envio de arquivos e GitHub
+    await ctx.reply(preview, { parse_mode: 'Markdown' });
     await ctx.replyWithDocument({ source: Buffer.from(m3u), filename: `${safe}.m3u` });
     await ctx.replyWithDocument({ source: Buffer.from(txt), filename: `${safe}.txt` });
-    
-    const githubLink = await saveToGitHub(`${safe}.m3u`, m3u);
-    if (githubLink) ctx.reply(`🔗 <b>GitHub:</b> <code>${githubLink}</code>`, { parse_mode: 'HTML' });
+    saveToGitHub(`${safe}.m3u`, m3u);
 
-  } catch (err) {
-    console.error(err);
-    ctx.reply("❌ Erro durante o processamento.");
-  }
+  } catch (err) { console.error(err); }
 });
 
-// ── Início do Bot ────────────────────────────────────────────────────────────
-bot.launch({
-  handlerTimeout: 0 // CRÍTICO: Evita o erro de 90 segundos do Telegraf
-});
-
-console.log('🤖 Bot Online com Contador Visual e HandlerTimeout desativado.');
-
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+bot.launch();
+console.log('🤖 Bot IPTV Scanner rodando...');
