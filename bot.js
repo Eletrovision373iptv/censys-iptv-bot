@@ -24,8 +24,7 @@ const GITHUB_REPO    = process.env.GITHUB_REPO;
 
 const PORT_RANGE_START = 14000;
 const PORT_RANGE_END   = 17000;
-const CONNECT_TIMEOUT  = 400; // Mais rápido para evitar timeout
-const MAX_CONCURRENT   = 30;  // Estabilidade para o Termux
+const MAX_CONCURRENT   = 40; 
 const LOGO_URL = 'https://i.imgur.com/dPaFa7x.png';
 
 const bot = new Telegraf(BOT_TOKEN);
@@ -34,7 +33,6 @@ const bot = new Telegraf(BOT_TOKEN);
 function captureFrame(url) {
   const tmpFile = path.join(os.tmpdir(), `frame_${Date.now()}.png`);
   try {
-    // Timeout de 5s no FFmpeg para não travar o loop
     spawnSync('ffmpeg', [
       '-y', '-timeout', '5000000', '-i', url,
       '-vframes', '1', '-ss', '00:00:02', '-vf', 'scale=320:180',
@@ -81,7 +79,7 @@ async function analyzeFrame(imagePath) {
 function checkPort(ip, port) {
   return new Promise(resolve => {
     const sock = new net.Socket();
-    sock.setTimeout(CONNECT_TIMEOUT);
+    sock.setTimeout(450);
     sock.on('connect', () => { sock.destroy(); resolve(true); });
     sock.on('error', () => { sock.destroy(); resolve(false); });
     sock.on('timeout', () => { sock.destroy(); resolve(false); });
@@ -126,15 +124,18 @@ bot.on('text', async ctx => {
 
   if (ips.length === 0) return;
 
-  const status = await ctx.reply(`🛰 <b>${serverName}</b>\n🔎 Iniciando scan em ${ips.length} IPs...\n<i>Aguarde o resultado final.</i>`, { parse_mode: 'HTML' });
+  const status = await ctx.reply(`🛰 <b>${serverName}</b>\n🔎 Preparando scan...`, { parse_mode: 'HTML' });
   const results = [];
 
   try {
-    for (const ip of ips) {
+    for (let ipIdx = 0; ipIdx < ips.length; ipIdx++) {
+      const ip = ips[ipIdx];
       const ports = Array.from({length: 3001}, (_, i) => 14000 + i);
+
       for (let i = 0; i < ports.length; i += MAX_CONCURRENT) {
         const chunk = ports.slice(i, i + MAX_CONCURRENT);
         const open = await Promise.all(chunk.map(p => checkPort(ip, p)));
+        
         for (let j = 0; j < chunk.length; j++) {
           if (open[j]) {
             const pathUrl = await checkStream(ip, chunk[j]);
@@ -142,41 +143,52 @@ bot.on('text', async ctx => {
               const url = `http://${ip}:${chunk[j]}${pathUrl}`;
               const frame = captureFrame(url);
               const name = frame ? (await analyzeFrame(frame)) : null;
-              if (frame) fs.unlinkSync(frame);
+              if (frame && fs.existsSync(frame)) fs.unlinkSync(frame);
               results.push({ url, name: (name || `CANAL ${results.length + 1}`).toUpperCase() });
             }
           }
         }
+
+        // Atualização visual do progresso
+        if (i % 200 === 0) {
+          await ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, 
+            `🛰 <b>${serverName}</b>\n🌐 IP: <code>${ip}</code> (${ipIdx + 1}/${ips.length})\n🔍 Portas: ${i}/3000\n📺 Canais: <b>${results.length}</b>`, 
+            { parse_mode: 'HTML' }).catch(() => {});
+        }
       }
     }
 
-    if (results.length === 0) return ctx.reply("❌ Nenhum canal encontrado.");
+    if (results.length === 0) {
+      return ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, "❌ Nenhum canal encontrado.");
+    }
 
-    // Gerar M3U e TXT
     const safe = serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase();
     let m3u = `#EXTM3U\n`;
-    let txt = `SERVER: ${serverName}\n\n`;
+    let txt = `SERVER: ${serverName}\nTOTAL: ${results.length}\n\n`;
     let preview = `<b>✅ FINALIZADO: ${serverName}</b>\n<pre>`;
 
     results.forEach((res, i) => {
       m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",${res.name}\n${res.url}\n`;
       txt += `${res.url}\n`;
-      if (i < 20) preview += `${res.name} -> ${res.url}\n`;
+      if (i < 20) preview += `${res.name}\n`;
     });
 
     if (results.length > 20) preview += `\n... + ${results.length - 20} canais`;
     preview += `</pre>`;
 
-    await ctx.reply(preview, { parse_mode: 'HTML' });
+    await ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, preview, { parse_mode: 'HTML' });
+    
     await ctx.replyWithDocument({ source: Buffer.from(m3u), filename: `${safe}.m3u` });
     await ctx.replyWithDocument({ source: Buffer.from(txt), filename: `${safe}.txt` });
-    saveToGitHub(`${safe}.m3u`, m3u);
+    
+    const githubLink = await saveToGitHub(`${safe}.m3u`, m3u);
+    if (githubLink) ctx.reply(`🔗 <b>GitHub:</b> <code>${githubLink}</code>`, { parse_mode: 'HTML' });
 
   } catch (err) {
     console.error(err);
-    ctx.reply("❌ Ocorreu um erro durante o scan.");
+    ctx.reply("❌ Ocorreu um erro crítico no scan.");
   }
 });
 
 bot.launch();
-console.log('🤖 Bot Online - Uma única prévia ativada.');
+console.log('🤖 Bot Online com Contador Visual ativado.');
