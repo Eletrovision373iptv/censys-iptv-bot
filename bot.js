@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// ─── CONFIGURAÇÃO (Lê do .env) ───────────────────────────────────────────────
 try {
   const env = fs.readFileSync(path.join(__dirname, '.env'), 'utf-8');
   env.split('\n').forEach(line => {
@@ -29,7 +29,7 @@ const LOGO_URL = 'https://i.imgur.com/dPaFa7x.png';
 
 const bot = new Telegraf(BOT_TOKEN);
 
-// ── Vision & FFmpeg ──────────────────────────────────────────────────────────
+// ── Google Vision & FFmpeg ───────────────────────────────────────────────────
 function captureFrame(url) {
   const tmpFile = path.join(os.tmpdir(), `frame_${Date.now()}.png`);
   try {
@@ -37,7 +37,7 @@ function captureFrame(url) {
       '-y', '-timeout', '5000000', '-i', url,
       '-vframes', '1', '-ss', '00:00:02', '-vf', 'scale=320:180',
       '-f', 'image2', tmpFile
-    ], { timeout: 8000 });
+    ], { timeout: 10000 });
     return fs.existsSync(tmpFile) ? tmpFile : null;
   } catch (_) { return null; }
 }
@@ -91,7 +91,7 @@ async function checkStream(ip, port) {
   const endpoints = ['/live.ts', '/stream', '/live'];
   for (const p of endpoints) {
     const ok = await new Promise(r => {
-      const req = http.get({ host: ip, port, path: p, timeout: 1200 }, res => {
+      const req = http.get({ host: ip, port, path: p, timeout: 1500 }, res => {
         res.destroy(); r(res.statusCode < 400);
       });
       req.on('error', () => r(false));
@@ -116,7 +116,7 @@ async function saveToGitHub(filename, content) {
   });
 }
 
-// ── Handler Principal ────────────────────────────────────────────────────────
+// ── Handler de Mensagens ─────────────────────────────────────────────────────
 bot.on('text', async ctx => {
   const lines = ctx.message.text.trim().split('\n').map(l => l.trim());
   let serverName = !/^\d/.test(lines[0]) ? lines[0] : "SERVIDOR_IPTV";
@@ -130,7 +130,7 @@ bot.on('text', async ctx => {
   try {
     for (let ipIdx = 0; ipIdx < ips.length; ipIdx++) {
       const ip = ips[ipIdx];
-      const ports = Array.from({length: 3001}, (_, i) => 14000 + i);
+      const ports = Array.from({length: (PORT_RANGE_END - PORT_RANGE_START + 1)}, (_, i) => PORT_RANGE_START + i);
 
       for (let i = 0; i < ports.length; i += MAX_CONCURRENT) {
         const chunk = ports.slice(i, i + MAX_CONCURRENT);
@@ -149,18 +149,16 @@ bot.on('text', async ctx => {
           }
         }
 
-        // Atualização visual do progresso
-        if (i % 200 === 0) {
+        // Atualização visual constante (feedback de que não travou)
+        if (i % 160 === 0) {
           await ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, 
-            `🛰 <b>${serverName}</b>\n🌐 IP: <code>${ip}</code> (${ipIdx + 1}/${ips.length})\n🔍 Portas: ${i}/3000\n📺 Canais: <b>${results.length}</b>`, 
+            `🛰 <b>${serverName}</b>\n🌐 IP: <code>${ip}</code> (${ipIdx + 1}/${ips.length})\n🔍 Portas: ${i}/${ports.length}\n📺 Canais: <b>${results.length}</b>`, 
             { parse_mode: 'HTML' }).catch(() => {});
         }
       }
     }
 
-    if (results.length === 0) {
-      return ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, "❌ Nenhum canal encontrado.");
-    }
+    if (results.length === 0) return ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, "❌ Nenhum canal encontrado.");
 
     const safe = serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase();
     let m3u = `#EXTM3U\n`;
@@ -178,6 +176,7 @@ bot.on('text', async ctx => {
 
     await ctx.telegram.editMessageText(ctx.chat.id, status.message_id, null, preview, { parse_mode: 'HTML' });
     
+    // Envio de arquivos e GitHub
     await ctx.replyWithDocument({ source: Buffer.from(m3u), filename: `${safe}.m3u` });
     await ctx.replyWithDocument({ source: Buffer.from(txt), filename: `${safe}.txt` });
     
@@ -186,9 +185,16 @@ bot.on('text', async ctx => {
 
   } catch (err) {
     console.error(err);
-    ctx.reply("❌ Ocorreu um erro crítico no scan.");
+    ctx.reply("❌ Erro durante o processamento.");
   }
 });
 
-bot.launch();
-console.log('🤖 Bot Online com Contador Visual ativado.');
+// ── Início do Bot ────────────────────────────────────────────────────────────
+bot.launch({
+  handlerTimeout: 0 // CRÍTICO: Evita o erro de 90 segundos do Telegraf
+});
+
+console.log('🤖 Bot Online com Contador Visual e HandlerTimeout desativado.');
+
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
