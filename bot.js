@@ -32,7 +32,10 @@ const CONNECT_TIMEOUT  = 800;
 const HTTP_TIMEOUT     = 2000;
 const MAX_CONCURRENT   = 80;
 
-const STREAM_ENDPOINTS = ['/live.ts', '/stream', '/stream.ts', '/live', '/video.ts', '/index.m3u8'];
+const STREAM_ENDPOINTS = [
+  '/live.ts', '/stream', '/stream.ts', '/live', '/video.ts', '/index.m3u8',
+];
+
 const LOGO_URL = 'https://i.imgur.com/dPaFa7x.png';
 
 const CHANNEL_NAMES = [
@@ -48,11 +51,20 @@ const CHANNEL_NAMES = [
 const bot = new Telegraf(BOT_TOKEN);
 
 // ── Google Vision API ─────────────────────────────────────────────────────────
+
 function captureFrame(url) {
   const tmpFile = path.join(os.tmpdir(), `frame_${Date.now()}.png`);
   try {
-    spawnSync('ffmpeg', ['-y', '-i', url, '-vframes', '1', '-ss', '00:00:03', '-vf', 'scale=320:180', '-f', 'image2', tmpFile], { timeout: 15000 });
-    return fs.existsSync(tmpFile) ? tmpFile : null;
+    spawnSync('ffmpeg', [
+      '-y', '-i', url,
+      '-vframes', '1',
+      '-ss', '00:00:03',
+      '-vf', 'scale=320:180',
+      '-f', 'image2',
+      tmpFile,
+    ], { timeout: 15000 });
+    if (fs.existsSync(tmpFile)) return tmpFile;
+    return null;
   } catch (_) { return null; }
 }
 
@@ -61,24 +73,41 @@ function analyzeFrame(imagePath) {
     try {
       const base64 = fs.readFileSync(imagePath).toString('base64');
       const body = JSON.stringify({
-        requests: [{ image: { content: base64 }, features: [{ type: 'LOGO_DETECTION', maxResults: 3 }, { type: 'TEXT_DETECTION', maxResults: 5 }] }]
+        requests: [{
+          image: { content: base64 },
+          features: [
+            { type: 'LOGO_DETECTION', maxResults: 3 },
+            { type: 'TEXT_DETECTION', maxResults: 5 },
+          ],
+        }],
       });
-      const options = { hostname: 'vision.googleapis.com', path: `/v1/images:annotate?key=${VISION_API_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } };
+      const options = {
+        hostname: 'vision.googleapis.com',
+        path: `/v1/images:annotate?key=${VISION_API_KEY}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      };
       const req = https.request(options, res => {
-        let d = ''; res.on('data', c => d += c);
+        let data = '';
+        res.on('data', c => data += c);
         res.on('end', () => {
           try {
-            const json = JSON.parse(d);
+            const json = JSON.parse(data);
             const resp = json.responses?.[0];
             const logos = resp?.logoAnnotations || [];
             if (logos.length > 0) return resolve(logos[0].description.toUpperCase());
             const texts = resp?.textAnnotations || [];
-            if (texts.length > 0) resolve(texts[0].description.split('\n')[0].trim().toUpperCase());
-            else resolve(null);
+            if (texts.length > 0) {
+              const first = texts[0].description.split('\n')[0].trim().toUpperCase();
+              if (first.length > 1 && first.length < 40) return resolve(first);
+            }
+            resolve(null);
           } catch (_) { resolve(null); }
         });
       });
-      req.on('error', () => resolve(null)); req.write(body); req.end();
+      req.on('error', () => resolve(null));
+      req.write(body);
+      req.end();
     } catch (_) { resolve(null); }
   });
 }
@@ -86,26 +115,44 @@ function analyzeFrame(imagePath) {
 async function detectChannelName(url) {
   const framePath = captureFrame(url);
   if (!framePath) return null;
-  try { return await analyzeFrame(framePath); } finally { try { fs.unlinkSync(framePath); } catch (_) {} }
+  try {
+    return await analyzeFrame(framePath);
+  } finally {
+    try { fs.unlinkSync(framePath); } catch (_) {}
+  }
 }
 
 // ── GitHub ────────────────────────────────────────────────────────────────────
+
 async function saveToGitHub(filename, content) {
   if (!GITHUB_TOKEN) return null;
   const filePath = `playlists/${filename}`;
   const base64 = Buffer.from(content, 'utf-8').toString('base64');
   const body = JSON.stringify({ message: `Atualizar ${filename}`, content: base64, branch: GITHUB_BRANCH });
+  
   return new Promise(resolve => {
     const req = https.request({
-      hostname: 'api.github.com', path: `/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${filePath}`,
-      method: 'PUT', headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'User-Agent': 'iptv-bot', 'Content-Type': 'application/json' }
-    }, res => resolve(res.statusCode <= 201 ? `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}` : null));
-    req.on('error', () => resolve(null)); req.write(body); req.end();
+      hostname: 'api.github.com',
+      path: `/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${filePath}`,
+      method: 'PUT',
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'User-Agent': 'iptv-bot', 'Content-Type': 'application/json' },
+    }, res => {
+      if (res.statusCode === 200 || res.statusCode === 201) {
+        resolve(`https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`);
+      } else { resolve(null); }
+    });
+    req.on('error', () => resolve(null));
+    req.write(body);
+    req.end();
   });
 }
 
 // ── Scanner ───────────────────────────────────────────────────────────────────
-function isValidIP(ip) { return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip); }
+
+function isValidIP(ip) {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip);
+}
+
 function checkPort(ip, port) {
   return new Promise(resolve => {
     const sock = new net.Socket();
@@ -120,7 +167,10 @@ function checkPort(ip, port) {
 async function checkStream(ip, port) {
   for (const p of STREAM_ENDPOINTS) {
     const ok = await new Promise(r => {
-      const req = http.get({ host: ip, port, path: p, timeout: HTTP_TIMEOUT }, res => { res.destroy(); r(res.statusCode < 500); });
+      const req = http.get({ host: ip, port, path: p, timeout: HTTP_TIMEOUT }, res => {
+        res.destroy();
+        r(res.statusCode < 500);
+      });
       req.on('error', () => r(false));
     });
     if (ok) return p;
@@ -128,17 +178,24 @@ async function checkStream(ip, port) {
   return null;
 }
 
-// ── Log em tempo real ─────────────────────────────────────────────────────────
+// ── Log em tempo real no Telegram ─────────────────────────────────────────────
+
 async function logToTelegram(chatId, line) {
   console.log(line);
-  try { await bot.telegram.sendMessage(chatId, '`' + line + '`', { parse_mode: 'Markdown' }); } catch (_) {}
+  try {
+    await bot.telegram.sendMessage(chatId, '`' + line + '`', { parse_mode: 'Markdown' });
+  } catch (_) {}
 }
 
 // ── Bot Handler ───────────────────────────────────────────────────────────────
+
 bot.on('text', async ctx => {
-  const lines = ctx.message.text.trim().split('\n').map(l => l.trim());
+  const input = ctx.message.text.trim();
+  const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
+
   let serverName = !isValidIP(lines[0]) ? lines[0] : "SERVIDOR";
   let ips = lines.filter(l => isValidIP(l));
+
   if (ips.length === 0) return;
 
   const status = await ctx.reply(`🛰 *${serverName}*\n🔍 Iniciando scan...`, { parse_mode: 'Markdown' });
@@ -147,18 +204,21 @@ bot.on('text', async ctx => {
   try {
     for (const ip of ips) {
       await bot.telegram.editMessageText(ctx.chat.id, status.message_id, undefined, `🛰 *${serverName}*\n🔍 Varrendo: ${ip}`);
-      for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p += MAX_CONCURRENT) {
-        const chunk = Array.from({length: Math.min(MAX_CONCURRENT, PORT_RANGE_END - p + 1)}, (_, i) => p + i);
-        const open = await Promise.all(chunk.map(port => checkPort(ip, port)));
-        for (let i = 0; i < chunk.length; i++) {
-          if (open[i]) {
-            const endpoint = await checkStream(ip, chunk[i]);
-            if (endpoint) {
-              const url = `http://${ip}:${chunk[i]}${endpoint}`;
-              const name = (await detectChannelName(url)) || CHANNEL_NAMES[allChannels.length % CHANNEL_NAMES.length];
-              allChannels.push({ name, url });
-              await logToTelegram(ctx.chat.id, `[ACHADO] -> ${name}`);
-            }
+      
+      for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) {
+        // Feedback visual da contagem de portas
+        if (p % 100 === 0) {
+          await bot.telegram.editMessageText(ctx.chat.id, status.message_id, undefined, `🛰 *${serverName}*\n🌐 IP: ${ip}\n🔍 Porta: ${p}/17000\n📺 Achados: ${allChannels.length}`).catch(()=>{});
+        }
+
+        const open = await checkPort(ip, p);
+        if (open) {
+          const endpoint = await checkStream(ip, p);
+          if (endpoint) {
+            const url = `http://${ip}:${p}${endpoint}`;
+            const name = (await detectChannelName(url)) || CHANNEL_NAMES[allChannels.length % CHANNEL_NAMES.length];
+            allChannels.push({ name, url });
+            await logToTelegram(ctx.chat.id, `[FHD] -> ${name} (${p})`);
           }
         }
       }
@@ -166,7 +226,7 @@ bot.on('text', async ctx => {
 
     if (allChannels.length === 0) return ctx.reply("❌ Nada encontrado.");
 
-    // ── GERAÇÃO FINAL (AQUI MUDA A PRÉVIA) ────────────────────────────────────
+    // Geração de arquivos
     const safe = serverName.replace(/[^a-z0-9]/gi, '_').toUpperCase();
     let m3u = `#EXTM3U\n`;
     let txt = `SERVER: ${serverName}\n\n`;
@@ -175,7 +235,8 @@ bot.on('text', async ctx => {
     allChannels.forEach((ch, i) => {
       m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",${ch.name}\n${ch.url}\n`;
       txt += `${ch.url}\n`;
-      if (i < 20) preview += `📺 ${ch.name}\n`; // Limite de 20 linhas na prévia
+      // PRÉVIA DE APENAS 20 LINHAS
+      if (i < 20) preview += `📺 ${ch.name}\n`;
     });
 
     if (allChannels.length > 20) preview += `\n... e mais ${allChannels.length - 20} canais.`;
@@ -189,4 +250,4 @@ bot.on('text', async ctx => {
 });
 
 bot.launch();
-console.log('🤖 Bot IPTV Scanner rodando...');
+console.log('🤖 Bot IPTV Scanner Online...');
