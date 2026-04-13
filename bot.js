@@ -120,11 +120,6 @@ async function checkStream(ip, port) {
   return null;
 }
 
-async function logToTelegram(chatId, line) {
-  console.log(line);
-  try { await bot.telegram.sendMessage(chatId, '`' + line + '`', { parse_mode: 'Markdown' }); } catch (_) {}
-}
-
 bot.on('text', async ctx => {
   const lines = ctx.message.text.trim().split('\n').map(l => l.trim());
   let serverName = !isValidIP(lines[0]) ? lines[0] : "SERVIDOR";
@@ -137,6 +132,7 @@ bot.on('text', async ctx => {
   try {
     for (const ip of ips) {
       for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) {
+        // Atualiza apenas a mensagem de status (sem mandar novas mensagens)
         if (p % 100 === 0) {
           await bot.telegram.editMessageText(ctx.chat.id, status.message_id, undefined, `🛰 *${serverName}*\n🌐 IP: ${ip}\n🔍 Porta: ${p}/17000\n📺 Achados: ${allChannels.length}`).catch(()=>{});
         }
@@ -146,7 +142,8 @@ bot.on('text', async ctx => {
             const url = `http://${ip}:${p}${endpoint}`;
             const name = (await detectChannelName(url)) || CHANNEL_NAMES[allChannels.length % CHANNEL_NAMES.length];
             allChannels.push({ name, url });
-            await logToTelegram(ctx.chat.id, `[ACHADO] -> ${name} (${p})`);
+            // Log apenas no console do Termux para não poluir o Telegram
+            console.log(`[ACHADO] -> ${name} (${p})`);
           }
         }
       }
@@ -162,7 +159,7 @@ bot.on('text', async ctx => {
     allChannels.forEach((ch, i) => {
       m3u += `#EXTINF:-1 tvg-logo="${LOGO_URL}",${ch.name}\n${ch.url}\n`;
       txt += `${ch.url}\n`;
-      if (i < 15) preview += `📺 ${ch.name}\n`; // 15 LINHAS AQUI
+      if (i < 15) preview += `📺 ${ch.name}\n`;
     });
 
     if (allChannels.length > 15) preview += `\n... e mais ${allChannels.length - 15} canais.`;
