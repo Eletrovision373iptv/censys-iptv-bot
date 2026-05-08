@@ -1,0 +1,7 @@
+#EXTM3U
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",National Geographic 1
+http://172.111.36.245:14026/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Cartoon 2
+http://172.111.36.245:14522/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",AXN 3
+http://172.111.36.245:14611/live.ts
