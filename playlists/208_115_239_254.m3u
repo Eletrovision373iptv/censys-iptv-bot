@@ -1,153 +1,205 @@
 #EXTM3U
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Globo 1
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Boomerang 1
 http://208.115.239.254:14001/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Curta 2
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Jovem Pan News 2
 http://208.115.239.254:14002/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Viva 3
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Premiere 3
 http://208.115.239.254:14010/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TNT 4
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Multishow 4
 http://208.115.239.254:14012/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Comedy Central 5
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Megapix 5
 http://208.115.239.254:14020/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Band 6
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Sony 6
 http://208.115.239.254:14021/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Cinemax 7
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",ESPN 7
 http://208.115.239.254:14022/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",CazéTV 8
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Universal 8
 http://208.115.239.254:14025/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Boomerang 9
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",National Geographic 9
 http://208.115.239.254:14026/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",SBT 10
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",AXN 10
 http://208.115.239.254:14028/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Premiere 11
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Cinemax 11
 http://208.115.239.254:14029/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",BandNews 12
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",CazéTV 12
 http://208.115.239.254:14042/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Record 13
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",BIS 13
 http://208.115.239.254:14050/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",GloboNews 14
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TNT 14
+http://208.115.239.254:14051/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Nickelodeon 15
+http://208.115.239.254:14052/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Warner 16
+http://208.115.239.254:14055/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Fox Sports 17
+http://208.115.239.254:14060/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Woohoo 18
+http://208.115.239.254:14061/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Cartoon 19
+http://208.115.239.254:14062/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Record 20
+http://208.115.239.254:14070/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Comedy Central 21
+http://208.115.239.254:14071/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Curta 22
+http://208.115.239.254:14072/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Viva 23
 http://208.115.239.254:14080/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",GNT 15
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",VH1 24
+http://208.115.239.254:14081/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Band 25
 http://208.115.239.254:14082/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Megapix 16
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Discovery 26
 http://208.115.239.254:14085/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Record News 17
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",SBT 27
 http://208.115.239.254:14086/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",RedeTV 18
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Arte1 28
 http://208.115.239.254:14090/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Canal Brasil 19
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",History 29
+http://208.115.239.254:14091/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",BandNews 30
 http://208.115.239.254:14092/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Animal Planet 20
-http://208.115.239.254:14093/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Warner 21
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Record News 31
+http://208.115.239.254:14094/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",GloboNews 32
 http://208.115.239.254:14095/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Woohoo 22
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Telecine 33
 http://208.115.239.254:14097/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",BIS 23
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Globo 34
+http://208.115.239.254:14098/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",GNT 35
 http://208.115.239.254:14099/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",MTV 24
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",E! 36
 http://208.115.239.254:14102/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",HBO 25
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Animal Planet 37
 http://208.115.239.254:14103/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Max 26
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Max 38
 http://208.115.239.254:14104/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Gazeta 27
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",CNN Brasil 39
 http://208.115.239.254:14113/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Disney 28
-http://208.115.239.254:14114/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Nickelodeon 29
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Combate 40
 http://208.115.239.254:14120/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Sony 30
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",RedeTV 41
 http://208.115.239.254:14121/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",History 31
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Canal Brasil 42
 http://208.115.239.254:14122/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Multishow 32
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Cultura 43
 http://208.115.239.254:14123/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",SporTV 33
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",MTV 44
 http://208.115.239.254:14130/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Combate 34
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Gazeta 45
 http://208.115.239.254:14132/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Cartoon 35
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",SporTV 46
 http://208.115.239.254:14133/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Lifetime 36
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Brasil 47
 http://208.115.239.254:14140/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",CNN Brasil 37
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Lifetime 48
 http://208.115.239.254:14141/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Jovem Pan News 38
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Disney 49
 http://208.115.239.254:14142/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Brasil 39
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",HBO 50
 http://208.115.239.254:14143/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Discovery 40
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Boomerang 51
 http://208.115.239.254:14144/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Telecine 41
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Jovem Pan News 52
 http://208.115.239.254:14150/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",ESPN 42
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Premiere 53
 http://208.115.239.254:14161/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",E! 43
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Multishow 54
 http://208.115.239.254:14168/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Cultura 44
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Megapix 55
 http://208.115.239.254:14183/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Fox Sports 45
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Sony 56
 http://208.115.239.254:14191/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Universal 46
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",ESPN 57
 http://208.115.239.254:14199/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",National Geographic 47
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Universal 58
 http://208.115.239.254:14200/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",VH1 48
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",National Geographic 59
 http://208.115.239.254:14202/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Arte1 49
-http://208.115.239.254:14208/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",AXN 50
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",AXN 60
 http://208.115.239.254:14210/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Globo 51
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Cinemax 61
 http://208.115.239.254:14212/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Curta 52
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",CazéTV 62
 http://208.115.239.254:14216/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Viva 53
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",BIS 63
 http://208.115.239.254:14218/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TNT 54
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TNT 64
 http://208.115.239.254:14220/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Comedy Central 55
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Nickelodeon 65
 http://208.115.239.254:14221/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Band 56
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Warner 66
+http://208.115.239.254:14222/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Fox Sports 67
 http://208.115.239.254:14224/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Cinemax 57
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Woohoo 68
 http://208.115.239.254:14227/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",CazéTV 58
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Cartoon 69
 http://208.115.239.254:14231/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Boomerang 59
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Record 70
 http://208.115.239.254:14240/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",SBT 60
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Comedy Central 71
 http://208.115.239.254:14241/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Premiere 61
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Curta 72
 http://208.115.239.254:14249/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",BandNews 62
-http://208.115.239.254:14311/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Record 63
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Viva 73
+http://208.115.239.254:14258/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",VH1 74
 http://208.115.239.254:14318/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",GloboNews 64
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Band 75
 http://208.115.239.254:14343/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",GNT 65
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Discovery 76
 http://208.115.239.254:14344/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Megapix 66
-http://208.115.239.254:14437/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Record News 67
-http://208.115.239.254:14651/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",RedeTV 68
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",SBT 77
+http://208.115.239.254:14436/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Arte1 78
+http://208.115.239.254:14529/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",History 79
+http://208.115.239.254:14581/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",BandNews 80
+http://208.115.239.254:14585/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Record News 81
+http://208.115.239.254:14654/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",GloboNews 82
+http://208.115.239.254:14656/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Telecine 83
+http://208.115.239.254:14708/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Globo 84
+http://208.115.239.254:14774/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",GNT 85
 http://208.115.239.254:14776/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Canal Brasil 69
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",E! 86
+http://208.115.239.254:14777/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Animal Planet 87
+http://208.115.239.254:14783/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Max 88
+http://208.115.239.254:14784/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",CNN Brasil 89
+http://208.115.239.254:14786/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Combate 90
+http://208.115.239.254:14787/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",RedeTV 91
+http://208.115.239.254:14789/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Canal Brasil 92
 http://208.115.239.254:14790/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Animal Planet 70
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Cultura 93
+http://208.115.239.254:14793/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",MTV 94
+http://208.115.239.254:14794/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Gazeta 95
 http://208.115.239.254:14795/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Warner 71
-http://208.115.239.254:14800/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Woohoo 72
-http://208.115.239.254:14801/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",BIS 73
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",SporTV 96
+http://208.115.239.254:14796/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",TV Brasil 97
+http://208.115.239.254:14797/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Lifetime 98
 http://208.115.239.254:14802/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",MTV 74
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Disney 99
 http://208.115.239.254:14804/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",HBO 75
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",HBO 100
 http://208.115.239.254:14805/live.ts
-#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Max 76
-http://208.115.239.254:14833/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Boomerang 101
+http://208.115.239.254:14891/live.ts
+#EXTINF:-1 tvg-logo="https://i.imgur.com/dPaFa7x.png",Jovem Pan News 102
+http://208.115.239.254:14950/live.ts
